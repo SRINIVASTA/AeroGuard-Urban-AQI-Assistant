@@ -49,6 +49,8 @@ def fetch_air_telemetry(lat: float, lon: float) -> Dict[str, Any]:
     current_wx = wx_data.get("current", {})
 
     return {
+        "timezone": aq_data.get("timezone") or wx_data.get("timezone") or "Asia/Kolkata",
+        "timezone_abbr": aq_data.get("timezone_abbreviation") or wx_data.get("timezone_abbreviation") or "IST",
         "pollutants": {
             "pm2_5": float(current_aq.get("pm2_5") or 0.0),
             "pm10": float(current_aq.get("pm10") or 0.0),
