@@ -54,6 +54,8 @@ def test_offline_persona_advisory_and_pdf_output():
         "is_land": True,
     }
     telemetry = {
+        "timezone": "Asia/Kolkata",
+        "timezone_abbr": "IST",
         "pollutants": {"pm2_5": 68.0, "pm10": 115.0, "no2": 32.0, "so2": 12.0, "o3": 48.0, "co": 410.0},
         "meteorology": {"temp_c": 29.5, "humidity_pct": 72.0, "wind_speed_kmh": 14.0, "wind_dir_deg": 180.0, "boundary_layer_m": 850.0},
     }
@@ -64,3 +66,27 @@ def test_offline_persona_advisory_and_pdf_output():
 
     pdf_bytes = build_aqi_certificate(loc, telemetry, aqi_report, dispersion, advisory, "General Citizen")
     assert pdf_bytes.startswith(b"%PDF")
+    assert b"IST" in pdf_bytes
+
+
+def test_pdf_international_country_timezone():
+    loc = {
+        "name": "Tokyo, Tokyo, Japan",
+        "lat": 35.6762,
+        "lon": 139.6503,
+        "zone": "Admin Region: Tokyo",
+        "is_land": True,
+    }
+    telemetry = {
+        "timezone": "Asia/Tokyo",
+        "timezone_abbr": "JST",
+        "pollutants": {"pm2_5": 22.0, "pm10": 40.0, "no2": 18.0, "so2": 5.0, "o3": 30.0, "co": 250.0},
+        "meteorology": {"temp_c": 18.0, "humidity_pct": 60.0, "wind_speed_kmh": 12.0, "wind_dir_deg": 90.0, "boundary_layer_m": 900.0},
+    }
+    aqi_report = compute_cpcb_aqi(telemetry["pollutants"])
+    dispersion = analyze_dispersion(telemetry["meteorology"])
+    advisory = generate_persona_advisory(loc["name"], aqi_report, dispersion, persona="General Citizen", api_key="")
+
+    pdf_bytes = build_aqi_certificate(loc, telemetry, aqi_report, dispersion, advisory, "General Citizen")
+    assert pdf_bytes.startswith(b"%PDF")
+    assert b"JST" in pdf_bytes
