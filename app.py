@@ -1,4 +1,4 @@
-"""AeroGuard Urban Air Quality Assistant - 100% Dynamic Global Console."""
+"""AeroGuard Urban Air Quality Assistant - 100% Dynamic Global Interactive Console."""
 
 import os
 import pandas as pd
@@ -29,9 +29,12 @@ def _get_secret_safe(section: str, key: str) -> str:
         return os.getenv(f"{section.upper()}_{key.upper()}", "")
 
 
+if "clicked_coords" not in st.session_state:
+    st.session_state["clicked_coords"] = None
+
 st.title("🌬️ AeroGuard — Live Global Urban Air Quality & Health AI Assistant")
 st.caption(
-    "100% Dynamic Worldwide Copernicus CAMS Satellite Telemetry, AQI Analytics, Atmospheric Dispersion & AI Health Advisories"
+    "100% Dynamic Worldwide Copernicus CAMS Satellite Telemetry, Interactive Map Selection, AQI Analytics & AI Health Advisories"
 )
 
 with st.sidebar:
@@ -39,6 +42,7 @@ with st.sidebar:
     search_mode = st.radio(
         "Select Input Type",
         options=["Type City / Place Name", "Type Latitude & Longitude"],
+        on_change=lambda: st.session_state.update({"clicked_coords": None}),
     )
 
     if search_mode == "Type City / Place Name":
@@ -46,6 +50,7 @@ with st.sidebar:
             "City / Town / Area Worldwide",
             value=st.query_params.get("city", "Visakhapatnam"),
             placeholder="Type any place on Earth (e.g., Gajuwaka, Tokyo, Paris, Cairo)",
+            on_change=lambda: st.session_state.update({"clicked_coords": None}),
         )
     else:
         lat_input = st.number_input(
@@ -54,6 +59,7 @@ with st.sidebar:
             max_value=90.0,
             value=float(st.query_params.get("lat", 17.6868)),
             format="%.4f",
+            on_change=lambda: st.session_state.update({"clicked_coords": None}),
         )
         lon_input = st.number_input(
             "Longitude (-180.0 to 180.0)",
@@ -61,7 +67,15 @@ with st.sidebar:
             max_value=180.0,
             value=float(st.query_params.get("lon", 83.2185)),
             format="%.4f",
+            on_change=lambda: st.session_state.update({"clicked_coords": None}),
         )
+
+    if st.session_state["clicked_coords"] is not None:
+        c_lat, c_lon = st.session_state["clicked_coords"]
+        st.info(f"📌 Map Pin Active: `{c_lat:.4f}°, {c_lon:.4f}°`")
+        if st.button("Reset to Sidebar Search", use_container_width=True):
+            st.session_state["clicked_coords"] = None
+            st.rerun()
 
     st.divider()
     persona = st.selectbox(
@@ -79,10 +93,12 @@ with st.sidebar:
         type="password",
         help="Optional: Leave blank to use the built-in deterministic advisory engine.",
     )
-
 try:
     with st.spinner("Resolving live coordinates and ingesting real-time satellite telemetry..."):
-        if search_mode == "Type City / Place Name":
+        if st.session_state["clicked_coords"] is not None:
+            sel_lat, sel_lon = st.session_state["clicked_coords"]
+            location = resolve_coordinates(sel_lat, sel_lon)
+        elif search_mode == "Type City / Place Name":
             location = resolve_location(city_input)
         else:
             location = resolve_coordinates(lat_input, lon_input)
@@ -101,7 +117,7 @@ try:
             api_key=active_key,
         )
 
-    # Top Status Banner with Live Resolved Place & Exact Coordinates
+    # Top Status Banner
     st.markdown(
         f"""
         <div style="padding:16px; border-radius:10px; background-color:{aqi_report['color']}22; border-left:6px solid {aqi_report['color']}; margin-bottom:16px;">
@@ -134,24 +150,40 @@ try:
     left_col, right_col = st.columns([1.15, 1])
 
     with left_col:
-        st.subheader("🗺️ Live Satellite Telemetry & Geospatial Grid Map")
-        map_fig = go.Figure(
+        st.subheader("🗺️ Interactive Geospatial Telemetry Map (Click Any Point to Inspect)")
+        grid_lats = []
+        grid_lons = []
+        for d_lat in (-0.06, -0.03, 0.0, 0.03, 0.06):
+            for d_lon in (-0.06, -0.03, 0.0, 0.03, 0.06):
+                if d_lat == 0.0 and d_lon == 0.0:
+                    continue
+                grid_lats.append(round(location["lat"] + d_lat, 4))
+                grid_lons.append(round(location["lon"] + d_lon, 4))
+
+        map_fig = go.Figure()
+        map_fig.add_trace(
+            go.Scattermap(
+                lat=grid_lats,
+                lon=grid_lons,
+                mode="markers",
+                marker=go.scattermap.Marker(size=14, color="#1D4ED8", opacity=0.25),
+                name="Probe Grid",
+                hovertemplate="Click to sample telemetry at<br>Lat: %{lat:.4f}, Lon: %{lon:.4f}<extra></extra>",
+            )
+        )
+        map_fig.add_trace(
             go.Scattermap(
                 lat=[location["lat"]],
                 lon=[location["lon"]],
                 mode="markers+text",
-                marker=go.scattermap.Marker(
-                    size=26,
-                    color=aqi_report["color"],
-                    opacity=0.85,
-                ),
-                text=[f"{location['name']} | AQI: {aqi_report['aqi']} ({aqi_report['category']})"],
+                marker=go.scattermap.Marker(size=26, color=aqi_report["color"], opacity=0.9),
+                name="Active Target",
+                text=[f"{location['name']} | AQI: {aqi_report['aqi']}"],
                 textposition="top center",
                 hovertemplate=(
                     f"<b>{location['name']}</b><br>"
                     f"Lat: {location['lat']:.4f}, Lon: {location['lon']:.4f}<br>"
-                    f"AQI: {aqi_report['aqi']} ({aqi_report['category']})<br>"
-                    f"PM2.5: {pol['pm2_5']:.1f} µg/m³ | PM10: {pol['pm10']:.1f} µg/m³<extra></extra>"
+                    f"AQI: {aqi_report['aqi']} ({aqi_report['category']})<extra></extra>"
                 ),
             )
         )
@@ -159,12 +191,22 @@ try:
             map=dict(
                 style="open-street-map",
                 center=dict(lat=location["lat"], lon=location["lon"]),
-                zoom=10,
+                zoom=10.5,
             ),
+            clickmode="event+select",
+            showlegend=False,
             margin=dict(l=0, r=0, t=0, b=0),
             height=330,
         )
-        st.plotly_chart(map_fig, use_container_width=True)
+
+        event = st.plotly_chart(map_fig, use_container_width=True, on_select="rerun", selection_mode="points", key="aqi_map")
+        if event and hasattr(event, "selection") and event.selection and event.selection.points:
+            pt = next(iter(event.selection.points))
+            new_lat = float(pt.get("lat", location["lat"]))
+            new_lon = float(pt.get("lon", location["lon"]))
+            if abs(new_lat - location["lat"]) > 1e-4 or abs(new_lon - location["lon"]) > 1e-4:
+                st.session_state["clicked_coords"] = (new_lat, new_lon)
+                st.rerun()
 
         st.subheader("📈 Live 24-Hour Pollutant Trajectory")
         hourly = telemetry.get("hourly", {})
@@ -183,7 +225,7 @@ try:
                 y=["PM2.5 (µg/m³)", "PM10 (µg/m³)", "NO₂ (µg/m³)"],
                 markers=True,
             )
-            fig.update_layout(height=300, margin=dict(l=10, r=10, t=20, b=10), legend_title_text="Pollutant")
+            fig.update_layout(height=290, margin=dict(l=10, r=10, t=20, b=10), legend_title_text="Pollutant")
             st.plotly_chart(fig, use_container_width=True)
 
     with right_col:
@@ -206,24 +248,35 @@ try:
             persona=persona,
         )
         city_prefix = next(iter(location["name"].split(","))).strip().replace(" ", "_")
-        st.download_button(
-            label="⬇️ Download AQI Compliance Certificate (.PDF)",
-            data=pdf_bytes,
-            file_name=f"AeroGuard_AQI_{city_prefix}.pdf",
-            mime="application/pdf",
-            use_container_width=True,
-        )
 
-        with st.expander("📧 Email Certificate via Encrypted TLS SMTP"):
-            recipient = st.text_input("Recipient Email Address", placeholder="citizen@example.com")
-            if st.button("Send PDF Report"):
-                try:
-                    smtp_user = _get_secret_safe("gmail", "username")
-                    smtp_pass = _get_secret_safe("gmail", "app_password")
-                    dispatch_pdf_report(recipient, location["name"], aqi_report["aqi"], pdf_bytes, smtp_user, smtp_pass)
-                    st.success(f"Certificate sent successfully to {recipient}!")
-                except Exception as mail_err:  # pylint: disable=broad-except
-                    st.error(f"Email dispatch unavailable: {mail_err}")
+        with st.container(border=True):
+            recipient = st.text_input(
+                "Recipient Email Address (for TLS SMTP Dispatch)",
+                placeholder="citizen@example.com",
+            )
+            btn_col1, btn_col2 = st.columns(2)
+            with btn_col1:
+                st.download_button(
+                    label="⬇️ Download PDF Report",
+                    data=pdf_bytes,
+                    file_name=f"AeroGuard_AQI_{city_prefix}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
+            with btn_col2:
+                send_clicked = st.button("📧 Email PDF Report", use_container_width=True)
+
+            if send_clicked:
+                if not recipient.strip():
+                    st.warning("Please enter a valid recipient email address above.")
+                else:
+                    try:
+                        smtp_user = _get_secret_safe("gmail", "username")
+                        smtp_pass = _get_secret_safe("gmail", "app_password")
+                        dispatch_pdf_report(recipient.strip(), location["name"], aqi_report["aqi"], pdf_bytes, smtp_user, smtp_pass)
+                        st.success(f"Certificate dispatched to {recipient.strip()}!")
+                    except Exception as mail_err:  # pylint: disable=broad-except
+                        st.error(f"Email dispatch unavailable: {mail_err}")
 
 except Exception as exc:  # pylint: disable=broad-except
     st.error(f"Unable to process air quality query: {exc}")
