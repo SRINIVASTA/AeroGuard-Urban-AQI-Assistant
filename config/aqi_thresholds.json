@@ -1,0 +1,52 @@
+{
+  "cpcb_breakpoints": [
+    {
+      "category": "Good",
+      "min_aqi": 0,
+      "max_aqi": 50,
+      "color": "#1B8A3D",
+      "health_impact": "Minimal impact on general population.",
+      "general_advisory": "Ideal conditions for outdoor activities and natural ventilation."
+    },
+    {
+      "category": "Satisfactory",
+      "min_aqi": 51,
+      "max_aqi": 100,
+      "color": "#7CB342",
+      "health_impact": "Minor breathing discomfort to sensitive people.",
+      "general_advisory": "Safe for most residents; sensitive individuals should monitor symptoms."
+    },
+    {
+      "category": "Moderate",
+      "min_aqi": 101,
+      "max_aqi": 200,
+      "color": "#FBC02D",
+      "health_impact": "Breathing discomfort to people with asthma, lung, and heart diseases.",
+      "general_advisory": "Reduce prolonged outdoor exertion if you have respiratory conditions."
+    },
+    {
+      "category": "Poor",
+      "min_aqi": 201,
+      "max_aqi": 300,
+      "color": "#FB8C00",
+      "health_impact": "Breathing discomfort to most people on prolonged exposure.",
+      "general_advisory": "Wear N95 masks outdoors; keep windows closed during peak traffic."
+    },
+    {
+      "category": "Very Poor",
+      "min_aqi": 301,
+      "max_aqi": 400,
+      "color": "#E53935",
+      "health_impact": "Respiratory illness on prolonged exposure.",
+      "general_advisory": "Avoid outdoor exercise; run indoor air purifiers with HEPA filters."
+    },
+    {
+      "category": "Severe",
+      "min_aqi": 401,
+      "max_aqi": 999,
+      "color": "#8E24AA",
+      "health_impact": "Affects healthy people and seriously impacts those with existing diseases.",
+      "general_advisory": "Stay indoors; schools and outdoor construction should suspend activities."
+    }
+  ]
+}
