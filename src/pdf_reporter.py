@@ -267,7 +267,9 @@ def build_aqi_certificate(
     pdf.cell(
         0,
         4,
-        _sanitize_latin1(f"AeroGuard Enterprise Report | Live Satellite Air Quality Telemetry | Generated on {stamp_str} | Page 1"),
+        _sanitize_latin1(
+            f"AeroGuard Enterprise | Powered by Tanakala AI Solutions | Generated on {stamp_str} | Page 1"
+        ),
         align="C",
     )
 
