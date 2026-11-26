@@ -3,14 +3,32 @@
 from typing import Dict, Any
 import requests
 
+HEADERS = {
+    "User-Agent": "AeroGuard-Urban-AQI-Assistant/1.0 (https://github.com)",
+    "Accept": "application/json",
+}
+
+
+def _safe_get_json(url: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    """Performs HTTP GET with User-Agent header and safely parses JSON."""
+    resp = requests.get(url, params=params, headers=HEADERS, timeout=15)
+    resp.raise_for_status()
+    raw = resp.text.strip()
+    if not raw:
+        raise RuntimeError(f"Empty response received from telemetry server ({url}).")
+    try:
+        return resp.json()
+    except ValueError as err:
+        raise RuntimeError(f"Invalid telemetry payload from {url}: {raw[:120]}") from err
+
 
 def fetch_air_telemetry(lat: float, lon: float) -> Dict[str, Any]:
-    """Fetches real-time pollutants (PM2.5, PM10, NO2, O3, SO2, CO) and wind vectors."""
+    """Fetches live global pollutants (PM2.5, PM10, NO2, O3, SO2, CO) and wind vectors."""
     aq_url = "https://open-meteo.com"
     aq_params = {
         "latitude": lat,
         "longitude": lon,
-        "current": "pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,european_aqi",
+        "current": "pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone",
         "hourly": "pm2_5,pm10,nitrogen_dioxide,ozone",
         "forecast_days": 1,
         "timezone": "auto",
@@ -24,13 +42,8 @@ def fetch_air_telemetry(lat: float, lon: float) -> Dict[str, Any]:
         "timezone": "auto",
     }
 
-    aq_resp = requests.get(aq_url, params=aq_params, timeout=12)
-    aq_resp.raise_for_status()
-    aq_data = aq_resp.json()
-
-    wx_resp = requests.get(wx_url, params=wx_params, timeout=12)
-    wx_resp.raise_for_status()
-    wx_data = wx_resp.json()
+    aq_data = _safe_get_json(aq_url, aq_params)
+    wx_data = _safe_get_json(wx_url, wx_params)
 
     current_aq = aq_data.get("current", {})
     current_wx = wx_data.get("current", {})
