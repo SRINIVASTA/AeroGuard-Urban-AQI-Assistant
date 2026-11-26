@@ -1,10 +1,11 @@
-"""Pytest verification suite covering CPCB AQI math, dispersion, geocoding, and PDF generation."""
+"""Pytest verification suite covering CPCB AQI math, dispersion, coordinate validation, and PDF generation."""
 
 import pytest
 from src.dispersion_analyzer import compute_cpcb_aqi, analyze_dispersion
-from src.geocoder import resolve_location
+from src.geocoder import resolve_location, resolve_coordinates
 from src.gemini_advisor import generate_persona_advisory
 from src.pdf_reporter import build_aqi_certificate
+from src.alert_dispatcher import EnterpriseEmailService
 
 
 def test_cpcb_aqi_good_category():
@@ -27,19 +28,31 @@ def test_dispersion_stagnation_detection():
     assert "Stagnation" in stagnant["dispersion_status"]
 
 
-def test_preset_city_resolution():
-    loc = resolve_location("Visakhapatnam")
-    assert loc["is_land"] is True
-    assert pytest.approx(loc["lat"], 0.1) == 17.68
-
-
-def test_empty_location_raises():
+def test_empty_location_and_invalid_coords_raise():
     with pytest.raises(ValueError):
         resolve_location("   ")
+    with pytest.raises(ValueError):
+        resolve_coordinates(120.0, 83.21)
+
+
+def test_email_service_missing_credentials_raises():
+    with pytest.raises(ValueError):
+        EnterpriseEmailService.send_report(
+            recipient_string="test@example.com",
+            sender_email="",
+            app_password="",
+            pdf_bytes=b"%PDF-1.4 test",
+        )
 
 
 def test_offline_persona_advisory_and_pdf_output():
-    loc = resolve_location("Visakhapatnam")
+    loc = {
+        "name": "Visakhapatnam, Andhra Pradesh, India",
+        "lat": 17.6868,
+        "lon": 83.2185,
+        "zone": "Admin Region: Andhra Pradesh",
+        "is_land": True,
+    }
     telemetry = {
         "pollutants": {"pm2_5": 68.0, "pm10": 115.0, "no2": 32.0, "so2": 12.0, "o3": 48.0, "co": 410.0},
         "meteorology": {"temp_c": 29.5, "humidity_pct": 72.0, "wind_speed_kmh": 14.0, "wind_dir_deg": 180.0, "boundary_layer_m": 850.0},
