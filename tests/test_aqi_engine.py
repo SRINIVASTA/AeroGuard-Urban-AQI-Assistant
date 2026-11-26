@@ -1,11 +1,24 @@
 """Pytest verification suite covering CPCB AQI math, dispersion, coordinate validation, and PDF generation."""
 
+import re
+import zlib
 import pytest
 from src.dispersion_analyzer import compute_cpcb_aqi, analyze_dispersion
 from src.geocoder import resolve_location, resolve_coordinates
 from src.gemini_advisor import generate_persona_advisory
 from src.pdf_reporter import build_aqi_certificate
 from src.alert_dispatcher import EnterpriseEmailService
+
+
+def _extract_pdf_text_bytes(pdf_bytes: bytes) -> bytes:
+    """Decompresses FlateDecode PDF streams so rendered text can be verified in tests."""
+    chunks = [pdf_bytes]
+    for match in re.finditer(rb"stream\r?\n(.*?)\r?\nendstream", pdf_bytes, re.DOTALL):
+        try:
+            chunks.append(zlib.decompress(match.group(1)))
+        except zlib.error:
+            pass
+    return b"\n".join(chunks)
 
 
 def test_cpcb_aqi_good_category():
@@ -66,7 +79,7 @@ def test_offline_persona_advisory_and_pdf_output():
 
     pdf_bytes = build_aqi_certificate(loc, telemetry, aqi_report, dispersion, advisory, "General Citizen")
     assert pdf_bytes.startswith(b"%PDF")
-    assert b"IST" in pdf_bytes
+    assert b"IST" in _extract_pdf_text_bytes(pdf_bytes)
 
 
 def test_pdf_international_country_timezone():
@@ -89,4 +102,4 @@ def test_pdf_international_country_timezone():
 
     pdf_bytes = build_aqi_certificate(loc, telemetry, aqi_report, dispersion, advisory, "General Citizen")
     assert pdf_bytes.startswith(b"%PDF")
-    assert b"JST" in pdf_bytes
+    assert b"JST" in _extract_pdf_text_bytes(pdf_bytes)
