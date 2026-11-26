@@ -4,7 +4,6 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from src.geocoder import DEFAULT_CITIES, resolve_location
 from src.telemetry_ingestor import fetch_air_telemetry
 from src.dispersion_analyzer import compute_cpcb_aqi, analyze_dispersion
 from src.gemini_advisor import generate_persona_advisory
