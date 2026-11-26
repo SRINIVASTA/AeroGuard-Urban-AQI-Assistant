@@ -1,11 +1,11 @@
-"""100% Dynamic Worldwide Location & Coordinate Resolver with Multi-Provider Fallback."""
+"""100% Dynamic Worldwide Location & Coordinate Resolver (Copy-Paste Safe URLs)."""
 
 from typing import Dict, Any
 import requests
 
 HEADERS = {
-    "User-Agent": "AeroGuard-Urban-AQI-Assistant/1.0 (contact: tasrinivass@gmail.com)",
-    "Accept": "application/json",
+    "User-Agent": "AeroGuard-Urban-AQI-Assistant/1.0",
+    "Accept": "*/*",
 }
 
 
@@ -16,16 +16,16 @@ def resolve_location(query: str) -> Dict[str, Any]:
         raise ValueError("Please type a city, town, or location name.")
 
     # Provider 1: Open-Meteo Global Geocoding API
+    om_host = "".join(["https://", "geocoding-api.", "open-meteo.", "com/v1/search"])
     om_error = ""
     try:
-        om_url = "https://open-meteo.com"
         om_params = {"name": cleaned, "count": 1, "language": "en", "format": "json"}
-        resp = requests.get(om_url, params=om_params, headers=HEADERS, timeout=12)
+        resp = requests.get(om_host, params=om_params, headers=HEADERS, timeout=12)
         resp.raise_for_status()
         data = resp.json()
         results = data.get("results", [])
         if results:
-            top = results[0]
+            top = results
             parts = [top.get("name", ""), top.get("admin1", ""), top.get("country", "")]
             full_name = ", ".join(dict.fromkeys([p for p in parts if p]))
             return {
@@ -39,14 +39,14 @@ def resolve_location(query: str) -> Dict[str, Any]:
         om_error = str(err)
 
     # Provider 2 Fallback: OpenStreetMap Nominatim
+    nom_host = "".join(["https://", "nominatim.", "openstreetmap.", "org/search"])
     try:
-        nom_url = "https://openstreetmap.org"
         nom_params = {"q": cleaned, "format": "json", "limit": 1}
-        nom_resp = requests.get(nom_url, params=nom_params, headers=HEADERS, timeout=12)
+        nom_resp = requests.get(nom_host, params=nom_params, headers=HEADERS, timeout=12)
         nom_resp.raise_for_status()
         nom_results = nom_resp.json()
         if nom_results:
-            item = nom_results[0]
+            item = nom_results
             return {
                 "name": item.get("display_name", cleaned),
                 "lat": float(item["lat"]),
@@ -65,9 +65,9 @@ def resolve_coordinates(lat: float, lon: float) -> Dict[str, Any]:
     if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
         raise ValueError("Latitude must be between -90 and 90, and Longitude between -180 and 180.")
 
-    bdc_url = "https://bigdatacloud.net"
+    bdc_host = "".join(["https://", "api.", "bigdatacloud.", "net/data/reverse-geocode-client"])
     params = {"latitude": lat, "longitude": lon, "localityLanguage": "en"}
-    resp = requests.get(bdc_url, params=params, headers=HEADERS, timeout=12)
+    resp = requests.get(bdc_host, params=params, headers=HEADERS, timeout=12)
     resp.raise_for_status()
     info = resp.json()
 
