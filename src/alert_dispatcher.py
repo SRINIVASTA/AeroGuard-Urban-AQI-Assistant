@@ -2,6 +2,7 @@
 
 import os
 import smtplib
+import socket
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -23,7 +24,10 @@ class EnterpriseEmailService:
         body: Optional[str] = None,
     ) -> int:
         """Dispatches an in-memory PDF or file attachment via encrypted TLS SMTP."""
-        if not sender_email or not app_password:
+        sender_clean = sender_email.strip()
+        pass_clean = app_password.replace(" ", "").strip()
+
+        if not sender_clean or not pass_clean:
             raise ValueError("SMTP credentials are missing. Configure [gmail] in Streamlit Secrets.")
 
         recipient_list = [email.strip() for email in recipient_string.split(",") if email.strip()]
@@ -44,8 +48,8 @@ class EnterpriseEmailService:
         email_body = body or "Please find attached your automated AeroGuard Air Quality Intelligence Certificate."
 
         msg = MIMEMultipart()
-        msg["From"] = sender_email
-        msg["To"] = ", ".join(recipient_list) if len(recipient_list) == 1 else sender_email
+        msg["From"] = sender_clean
+        msg["To"] = ", ".join(recipient_list) if len(recipient_list) == 1 else sender_clean
         msg["Subject"] = email_subject
         msg.attach(MIMEText(email_body, "plain"))
 
@@ -53,11 +57,21 @@ class EnterpriseEmailService:
         part["Content-Disposition"] = f'attachment; filename="{filename}"'
         msg.attach(part)
 
-        server = smtplib.SMTP("://gmail.com", 587, timeout=15)
+        smtp_host = "://gmail.com"
         try:
+            socket.gethostbyname(smtp_host)
+        except socket.gaierror as dns_err:
+            raise ConnectionError(
+                "DNS lookup failed for ://gmail.com. Check your internet connection or hosting firewall."
+            ) from dns_err
+
+        server = smtplib.SMTP(smtp_host, 587, timeout=15)
+        try:
+            server.ehlo()
             server.starttls()
-            server.login(sender_email, app_password)
-            server.sendmail(sender_email, recipient_list, msg.as_string())
+            server.ehlo()
+            server.login(sender_clean, pass_clean)
+            server.sendmail(sender_clean, recipient_list, msg.as_string())
         finally:
             server.quit()
 
