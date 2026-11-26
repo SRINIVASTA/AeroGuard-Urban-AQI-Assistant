@@ -136,7 +136,7 @@ try:
             <p style="margin:4px 0; font-size:13px; color:#D1D5DB;">
                 📍 <strong>Live Coordinates:</strong> {location['lat']:.5f}° N, {location['lon']:.5f}° E &nbsp;|&nbsp;
                 <strong>Metadata:</strong> {location['zone']} &nbsp;|&nbsp;
-                <strong>Grid:</strong> Copernicus CAMS (~11 km cell)
+                <strong>Telemetry Layer:</strong> {telemetry.get('source_label', 'Copernicus CAMS (~11 km cell)')}
             </p>
             <p style="margin:4px 0 0 0; font-size:15px; color:#FAFAFA;">
                 <strong>Live AQI: {aqi_report['aqi']} ({aqi_report['category']})</strong> &nbsp;|&nbsp;
