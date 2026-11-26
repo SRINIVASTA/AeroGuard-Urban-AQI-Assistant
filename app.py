@@ -30,6 +30,11 @@ def _get_secret_safe(section: str, key: str) -> str:
         return os.getenv(f"{section.upper()}_{key.upper()}", "")
 
 
+def _clear_map_pin() -> None:
+    """Clears active map click override when user edits sidebar inputs."""
+    st.session_state["clicked_coords"] = None
+
+
 if "clicked_coords" not in st.session_state:
     st.session_state["clicked_coords"] = None
 
@@ -43,7 +48,7 @@ with st.sidebar:
     search_mode = st.radio(
         "Select Input Type",
         options=["Type City / Place Name", "Type Latitude & Longitude"],
-        on_change=lambda: st.session_state.update({"clicked_coords": None}),
+        on_change=_clear_map_pin,
     )
 
     if search_mode == "Type City / Place Name":
@@ -51,7 +56,7 @@ with st.sidebar:
             "City / Town / Area Worldwide",
             value=st.query_params.get("city", "Visakhapatnam"),
             placeholder="Type any place on Earth (e.g., Gajuwaka, Tokyo, Paris, Cairo)",
-            on_change=lambda: st.session_state.update({"clicked_coords": None}),
+            on_change=_clear_map_pin,
         )
     else:
         lat_input = st.number_input(
@@ -60,7 +65,8 @@ with st.sidebar:
             max_value=90.0,
             value=float(st.query_params.get("lat", 17.6868)),
             format="%.4f",
-            on_change=lambda: st.session_state.update({"clicked_coords": None}),
+            key="lat_box",
+            on_change=_clear_map_pin,
         )
         lon_input = st.number_input(
             "Longitude (-180.0 to 180.0)",
@@ -68,14 +74,15 @@ with st.sidebar:
             max_value=180.0,
             value=float(st.query_params.get("lon", 83.2185)),
             format="%.4f",
-            on_change=lambda: st.session_state.update({"clicked_coords": None}),
+            key="lon_box",
+            on_change=_clear_map_pin,
         )
 
     if st.session_state["clicked_coords"] is not None:
         c_lat, c_lon = st.session_state["clicked_coords"]
         st.info(f"📌 Map Pin Active: `{c_lat:.5f}°, {c_lon:.5f}°`")
         if st.button("Reset to Sidebar Search", use_container_width=True):
-            st.session_state["clicked_coords"] = None
+            _clear_map_pin()
             st.rerun()
 
     st.divider()
@@ -125,7 +132,8 @@ try:
             <h3 style="margin:0; color:#111;">{location['name']}</h3>
             <p style="margin:4px 0; font-size:13px; color:#333;">
                 📍 <strong>Live Coordinates:</strong> {location['lat']:.5f}° N, {location['lon']:.5f}° E &nbsp;|&nbsp;
-                <strong>Metadata:</strong> {location['zone']}
+                <strong>Metadata:</strong> {location['zone']} &nbsp;|&nbsp;
+                <strong>Grid:</strong> Copernicus CAMS (~11 km cell)
             </p>
             <p style="margin:4px 0 0 0; font-size:15px;">
                 <strong>Live AQI: {aqi_report['aqi']} ({aqi_report['category']})</strong> &nbsp;|&nbsp;
@@ -152,14 +160,14 @@ try:
 
     with left_col:
         st.subheader("🗺️ Interactive Geospatial Map (Click Anywhere to Sample Point)")
-        m = folium.Map(location=[location["lat"], location["lon"]], zoom_start=12, control_scale=True)
+        m = folium.Map(location=[location["lat"], location["lon"]], zoom_start=11, control_scale=True)
         folium.Circle(
             location=[location["lat"], location["lon"]],
-            radius=1500,
+            radius=5500,
             color=aqi_report["color"],
             fill=True,
-            fill_opacity=0.2,
-            tooltip="Satellite Observation Footprint (1.5 km radius)",
+            fill_opacity=0.15,
+            tooltip="Copernicus CAMS Satellite Grid Footprint (~11 km diameter)",
         ).add_to(m)
         folium.Marker(
             location=[location["lat"], location["lon"]],
