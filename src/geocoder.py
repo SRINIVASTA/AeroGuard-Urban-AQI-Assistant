@@ -6,6 +6,7 @@ import requests
 HEADERS = {
     "User-Agent": "AeroGuard-Urban-AQI-Assistant/1.0",
     "Accept": "*/*",
+    "Accept-Language": "en-US,en;q=0.9",
 }
 
 
@@ -38,10 +39,10 @@ def resolve_location(query: str) -> Dict[str, Any]:
     except Exception as err:  # pylint: disable=broad-except
         om_error = str(err)
 
-    # Provider 2 Fallback: OpenStreetMap Nominatim
+    # Provider 2 Fallback: OpenStreetMap Nominatim (English enforced)
     nom_host = "".join(("https://", "nominatim.", "openstreetmap.", "org/search"))
     try:
-        nom_params = {"q": cleaned, "format": "json", "limit": 1}
+        nom_params = {"q": cleaned, "format": "json", "limit": 1, "accept-language": "en"}
         nom_resp = requests.get(nom_host, params=nom_params, headers=HEADERS, timeout=12)
         nom_resp.raise_for_status()
         nom_results = nom_resp.json()
@@ -61,14 +62,14 @@ def resolve_location(query: str) -> Dict[str, Any]:
 
 
 def resolve_coordinates(lat: float, lon: float) -> Dict[str, Any]:
-    """Dynamically reverse-geocodes any typed or clicked Latitude & Longitude worldwide."""
+    """Dynamically reverse-geocodes any typed or clicked Latitude & Longitude worldwide in English."""
     lat_r = round(float(lat), 5)
     lon_r = round(float(lon), 5)
 
     if not (-90.0 <= lat_r <= 90.0 and -180.0 <= lon_r <= 180.0):
         raise ValueError("Latitude must be between -90 and 90, and Longitude between -180 and 180.")
 
-    # Provider 1: BigDataCloud Reverse Geocoding
+    # Provider 1: BigDataCloud Reverse Geocoding (English enforced)
     try:
         bdc_host = "".join(("https://", "api.", "bigdatacloud.", "net/data/reverse-geocode-client"))
         params = {"latitude": lat_r, "longitude": lon_r, "localityLanguage": "en"}
@@ -100,10 +101,11 @@ def resolve_coordinates(lat: float, lon: float) -> Dict[str, Any]:
     except Exception:  # pylint: disable=broad-except
         pass
 
-    # Provider 2 Fallback: OpenStreetMap Nominatim Reverse Geocoding
+    # Provider 2 Fallback: OpenStreetMap Nominatim Reverse Geocoding (English enforced)
     try:
         nom_rev = "".join(("https://", "nominatim.", "openstreetmap.", "org/reverse"))
-        n_resp = requests.get(nom_rev, params={"lat": lat_r, "lon": lon_r, "format": "json"}, headers=HEADERS, timeout=10)
+        n_params = {"lat": lat_r, "lon": lon_r, "format": "json", "accept-language": "en"}
+        n_resp = requests.get(nom_rev, params=n_params, headers=HEADERS, timeout=10)
         if n_resp.status_code == 200:
             n_data = n_resp.json()
             if "display_name" in n_data:
