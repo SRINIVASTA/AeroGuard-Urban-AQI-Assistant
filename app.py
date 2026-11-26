@@ -1,10 +1,11 @@
-"""AeroGuard Urban Air Quality Assistant - 100% Dynamic Global Interactive Console."""
+"""AeroGuard Urban Air Quality Assistant - True Click-Anywhere Global Geospatial Console."""
 
 import os
+import folium
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
+from streamlit_folium import st_folium
 
 from src.geocoder import resolve_location, resolve_coordinates
 from src.telemetry_ingestor import fetch_air_telemetry
@@ -34,7 +35,7 @@ if "clicked_coords" not in st.session_state:
 
 st.title("🌬️ AeroGuard — Live Global Urban Air Quality & Health AI Assistant")
 st.caption(
-    "100% Dynamic Worldwide Copernicus CAMS Satellite Telemetry, Interactive Map Selection, AQI Analytics & AI Health Advisories"
+    "Click Anywhere on the Global Map, Search Any City, or Enter Exact Coordinates for Live Copernicus CAMS Telemetry & AI Advisories"
 )
 
 with st.sidebar:
@@ -72,7 +73,7 @@ with st.sidebar:
 
     if st.session_state["clicked_coords"] is not None:
         c_lat, c_lon = st.session_state["clicked_coords"]
-        st.info(f"📌 Map Pin Active: `{c_lat:.4f}°, {c_lon:.4f}°`")
+        st.info(f"📌 Map Pin Active: `{c_lat:.5f}°, {c_lon:.5f}°`")
         if st.button("Reset to Sidebar Search", use_container_width=True):
             st.session_state["clicked_coords"] = None
             st.rerun()
@@ -123,7 +124,7 @@ try:
         <div style="padding:16px; border-radius:10px; background-color:{aqi_report['color']}22; border-left:6px solid {aqi_report['color']}; margin-bottom:16px;">
             <h3 style="margin:0; color:#111;">{location['name']}</h3>
             <p style="margin:4px 0; font-size:13px; color:#333;">
-                📍 <strong>Live Coordinates:</strong> {location['lat']:.4f}° N, {location['lon']:.4f}° E &nbsp;|&nbsp;
+                📍 <strong>Live Coordinates:</strong> {location['lat']:.5f}° N, {location['lon']:.5f}° E &nbsp;|&nbsp;
                 <strong>Metadata:</strong> {location['zone']}
             </p>
             <p style="margin:4px 0 0 0; font-size:15px;">
@@ -150,62 +151,30 @@ try:
     left_col, right_col = st.columns([1.15, 1])
 
     with left_col:
-        st.subheader("🗺️ Interactive Geospatial Telemetry Map (Click Any Point to Inspect)")
-        grid_lats = []
-        grid_lons = []
-        for d_lat in (-0.06, -0.03, 0.0, 0.03, 0.06):
-            for d_lon in (-0.06, -0.03, 0.0, 0.03, 0.06):
-                if d_lat == 0.0 and d_lon == 0.0:
-                    continue
-                grid_lats.append(round(location["lat"] + d_lat, 4))
-                grid_lons.append(round(location["lon"] + d_lon, 4))
+        st.subheader("🗺️ Interactive Geospatial Map (Click Anywhere to Sample Point)")
+        m = folium.Map(location=[location["lat"], location["lon"]], zoom_start=12, control_scale=True)
+        folium.Circle(
+            location=[location["lat"], location["lon"]],
+            radius=1500,
+            color=aqi_report["color"],
+            fill=True,
+            fill_opacity=0.2,
+            tooltip="Satellite Observation Footprint (1.5 km radius)",
+        ).add_to(m)
+        folium.Marker(
+            location=[location["lat"], location["lon"]],
+            popup=f"<b>{location['name']}</b><br>AQI: {aqi_report['aqi']} ({aqi_report['category']})<br>Lat: {location['lat']:.5f}, Lon: {location['lon']:.5f}",
+            tooltip=f"{location['name']} | AQI: {aqi_report['aqi']}",
+            icon=folium.Icon(color="red", icon="info-sign"),
+        ).add_to(m)
+        folium.LatLngPopup().add_to(m)
 
-        map_fig = go.Figure()
-        map_fig.add_trace(
-            go.Scattermap(
-                lat=grid_lats,
-                lon=grid_lons,
-                mode="markers",
-                marker=go.scattermap.Marker(size=14, color="#1D4ED8", opacity=0.25),
-                name="Probe Grid",
-                hovertemplate="Click to sample telemetry at<br>Lat: %{lat:.4f}, Lon: %{lon:.4f}<extra></extra>",
-            )
-        )
-        map_fig.add_trace(
-            go.Scattermap(
-                lat=[location["lat"]],
-                lon=[location["lon"]],
-                mode="markers+text",
-                marker=go.scattermap.Marker(size=26, color=aqi_report["color"], opacity=0.9),
-                name="Active Target",
-                text=[f"{location['name']} | AQI: {aqi_report['aqi']}"],
-                textposition="top center",
-                hovertemplate=(
-                    f"<b>{location['name']}</b><br>"
-                    f"Lat: {location['lat']:.4f}, Lon: {location['lon']:.4f}<br>"
-                    f"AQI: {aqi_report['aqi']} ({aqi_report['category']})<extra></extra>"
-                ),
-            )
-        )
-        map_fig.update_layout(
-            map=dict(
-                style="open-street-map",
-                center=dict(lat=location["lat"], lon=location["lon"]),
-                zoom=10.5,
-            ),
-            clickmode="event+select",
-            showlegend=False,
-            margin=dict(l=0, r=0, t=0, b=0),
-            height=330,
-        )
-
-        event = st.plotly_chart(map_fig, use_container_width=True, on_select="rerun", selection_mode="points", key="aqi_map")
-        if event and hasattr(event, "selection") and event.selection and event.selection.points:
-            pt = next(iter(event.selection.points))
-            new_lat = float(pt.get("lat", location["lat"]))
-            new_lon = float(pt.get("lon", location["lon"]))
-            if abs(new_lat - location["lat"]) > 1e-4 or abs(new_lon - location["lon"]) > 1e-4:
-                st.session_state["clicked_coords"] = (new_lat, new_lon)
+        map_state = st_folium(m, height=330, use_container_width=True, key="aeroguard_folium_map")
+        if map_state and map_state.get("last_clicked"):
+            clicked_lat = float(map_state["last_clicked"]["lat"])
+            clicked_lon = float(map_state["last_clicked"]["lng"])
+            if abs(clicked_lat - location["lat"]) > 1e-4 or abs(clicked_lon - location["lon"]) > 1e-4:
+                st.session_state["clicked_coords"] = (clicked_lat, clicked_lon)
                 st.rerun()
 
         st.subheader("📈 Live 24-Hour Pollutant Trajectory")
@@ -225,7 +194,7 @@ try:
                 y=["PM2.5 (µg/m³)", "PM10 (µg/m³)", "NO₂ (µg/m³)"],
                 markers=True,
             )
-            fig.update_layout(height=290, margin=dict(l=10, r=10, t=20, b=10), legend_title_text="Pollutant")
+            fig.update_layout(height=280, margin=dict(l=10, r=10, t=20, b=10), legend_title_text="Pollutant")
             st.plotly_chart(fig, use_container_width=True)
 
     with right_col:
