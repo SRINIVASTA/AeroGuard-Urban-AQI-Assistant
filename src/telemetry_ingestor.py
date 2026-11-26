@@ -4,7 +4,7 @@ from typing import Dict, Any
 import requests
 
 HEADERS = {
-    "User-Agent": "AeroGuard-Urban-AQI-Assistant/1.0 (https://github.com)",
+    "User-Agent": "AeroGuard-Urban-AQI-Assistant/1.0",
     "Accept": "application/json",
 }
 
@@ -24,7 +24,7 @@ def _safe_get_json(url: str, params: Dict[str, Any]) -> Dict[str, Any]:
 
 def fetch_air_telemetry(lat: float, lon: float) -> Dict[str, Any]:
     """Fetches live global pollutants (PM2.5, PM10, NO2, O3, SO2, CO) and wind vectors."""
-    aq_url = "https://open-meteo.com"
+    aq_url = "".join(("https://", "air-quality-api.", "open-meteo.", "com/v1/air-quality"))
     aq_params = {
         "latitude": lat,
         "longitude": lon,
@@ -34,7 +34,7 @@ def fetch_air_telemetry(lat: float, lon: float) -> Dict[str, Any]:
         "timezone": "auto",
     }
 
-    wx_url = "https://open-meteo.com"
+    wx_url = "".join(("https://", "api.", "open-meteo.", "com/v1/forecast"))
     wx_params = {
         "latitude": lat,
         "longitude": lon,
