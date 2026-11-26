@@ -42,14 +42,22 @@ def resolve_location(query: str) -> Dict[str, Any]:
     # Provider 2 Fallback: OpenStreetMap Nominatim (English enforced)
     nom_host = "".join(("https://", "nominatim.", "openstreetmap.", "org/search"))
     try:
-        nom_params = {"q": cleaned, "format": "json", "limit": 1, "accept-language": "en"}
+        nom_params = {"q": cleaned, "format": "json", "limit": 1, "accept-language": "en", "addressdetails": 1}
         nom_resp = requests.get(nom_host, params=nom_params, headers=HEADERS, timeout=12)
         nom_resp.raise_for_status()
         nom_results = nom_resp.json()
         if nom_results:
             item = next(iter(nom_results))
+            disp = item.get("display_name", cleaned)
+            if disp and not disp.isascii():
+                addr = item.get("address", {})
+                en_parts = [
+                    v for k in ("city", "town", "county", "state_district", "state", "country")
+                    if (v := addr.get(k)) and v.isascii()
+                ]
+                disp = ", ".join(dict.fromkeys(en_parts)) if en_parts else cleaned.title()
             return {
-                "name": item.get("display_name", cleaned),
+                "name": disp,
                 "lat": round(float(item["lat"]), 5),
                 "lon": round(float(item["lon"]), 5),
                 "zone": f"OSM Class: {item.get('type', 'Urban').title()}",
@@ -89,13 +97,13 @@ def resolve_coordinates(lat: float, lon: float) -> Dict[str, Any]:
                     "is_land": False,
                 }
 
-            parts = (locality, region, country)
-            display_name = ", ".join(dict.fromkeys(p for p in parts if p))
+            parts = [p for p in (locality, region, country) if p and p.isascii()]
+            display_name = ", ".join(dict.fromkeys(parts)) or f"Global Grid Point ({lat_r:.4f}, {lon_r:.4f})"
             return {
                 "name": display_name,
                 "lat": lat_r,
                 "lon": lon_r,
-                "zone": f"Admin Region: {region or country}",
+                "zone": f"Admin Region: {region if region.isascii() else country}",
                 "is_land": True,
             }
     except Exception:  # pylint: disable=broad-except
@@ -104,13 +112,21 @@ def resolve_coordinates(lat: float, lon: float) -> Dict[str, Any]:
     # Provider 2 Fallback: OpenStreetMap Nominatim Reverse Geocoding (English enforced)
     try:
         nom_rev = "".join(("https://", "nominatim.", "openstreetmap.", "org/reverse"))
-        n_params = {"lat": lat_r, "lon": lon_r, "format": "json", "accept-language": "en"}
+        n_params = {"lat": lat_r, "lon": lon_r, "format": "json", "accept-language": "en", "addressdetails": 1}
         n_resp = requests.get(nom_rev, params=n_params, headers=HEADERS, timeout=10)
         if n_resp.status_code == 200:
             n_data = n_resp.json()
-            if "display_name" in n_data:
+            disp = n_data.get("display_name", "")
+            if disp and not disp.isascii():
+                addr = n_data.get("address", {})
+                en_parts = [
+                    v for k in ("city", "town", "county", "state_district", "state", "country")
+                    if (v := addr.get(k)) and v.isascii()
+                ]
+                disp = ", ".join(dict.fromkeys(en_parts)) if en_parts else f"International Sector ({lat_r:.4f}, {lon_r:.4f})"
+            if disp:
                 return {
-                    "name": n_data["display_name"],
+                    "name": disp,
                     "lat": lat_r,
                     "lon": lon_r,
                     "zone": "OSM Reverse Telemetry Grid",
