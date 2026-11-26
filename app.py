@@ -136,11 +136,11 @@ try:
     with left_col:
         st.subheader("🗺️ Live Satellite Telemetry & Geospatial Grid Map")
         map_fig = go.Figure(
-            go.Scattermapbox(
+            go.Scattermap(
                 lat=[location["lat"]],
                 lon=[location["lon"]],
                 mode="markers+text",
-                marker=go.scattermapbox.Marker(
+                marker=go.scattermap.Marker(
                     size=26,
                     color=aqi_report["color"],
                     opacity=0.85,
@@ -156,8 +156,8 @@ try:
             )
         )
         map_fig.update_layout(
-            mapbox_style="open-street-map",
-            mapbox=dict(
+            map=dict(
+                style="open-street-map",
                 center=dict(lat=location["lat"], lon=location["lon"]),
                 zoom=10,
             ),
@@ -205,11 +205,11 @@ try:
             advisory_text=advisory_text,
             persona=persona,
         )
-        safe_city_slug = location["name"].split(",").strip().replace(" ", "_")
+        city_prefix = next(iter(location["name"].split(","))).strip().replace(" ", "_")
         st.download_button(
             label="⬇️ Download AQI Compliance Certificate (.PDF)",
             data=pdf_bytes,
-            file_name=f"AeroGuard_AQI_{safe_city_slug}.pdf",
+            file_name=f"AeroGuard_AQI_{city_prefix}.pdf",
             mime="application/pdf",
             use_container_width=True,
         )
