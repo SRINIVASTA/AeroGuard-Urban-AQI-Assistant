@@ -1,23 +1,23 @@
 # 🌬️ AeroGuard — Global Urban Air Quality & Health AI Assistant
 
-A cloud-native geospatial intelligence console for real-time global air quality monitoring, atmospheric dispersion modeling, persona-driven Gemini AI health advisories, and automated enterprise PDF compliance reporting with stitched satellite map tiles.
+A cloud-native geospatial intelligence console for real-time global air quality monitoring, multi-cell atmospheric dispersion modeling, persona-driven Gemini AI health advisories, and automated enterprise PDF compliance reporting with stitched satellite map tiles and local timezone stamping.
 
 ## About
 
-AeroGuard provides a zero-API-cost, worldwide air quality intelligence pipeline that resolves any typed city, exact latitude/longitude, or interactive map click into live Copernicus CAMS satellite telemetry, Indian CPCB National AQI sub-indices, boundary-layer ventilation physics, and executive PDF certificates.
+AeroGuard provides a zero-API-cost, worldwide air quality intelligence pipeline that resolves any typed city, exact latitude/longitude, or interactive map click into live Copernicus CAMS satellite telemetry, 5-point bilinear spatial interpolation with OpenStreetMap 1.5 km micro-environment land-use downscaling, Indian CPCB National AQI sub-indices, boundary-layer ventilation physics, and executive PDF certificates stamped in the target location's local timezone (e.g., IST for India).
 
-Built and maintained by [@SRINIVASTA](https://github.com/SRINIVASTA), this repository hosts a click-anywhere Folium geospatial interface, a multi-provider global geocoder, a CPCB linear sub-index & dispersion engine, a Gemini 2.5 Flash persona advisor (with deterministic fallback), and an FPDF2 stitched-map certificate builder.
+Built and maintained by [@SRINIVASTA](https://github.com/SRINIVASTA), this repository hosts a click-anywhere Folium geospatial interface, a multi-provider global geocoder, a hybrid satellite + OSM micro-climate ingestor, a CPCB linear sub-index & dispersion engine, a Gemini 2.5 Flash persona advisor (with deterministic fallback), and an FPDF2 stitched-map certificate builder.
 
 ## Modules in this repo
 
 | Module | Description |
 | :--- | :--- |
 | `src/geocoder.py` | Multi-provider global location & coordinate resolver (Open-Meteo Geocoding, BigDataCloud, and OpenStreetMap Nominatim) with offshore/marine sector detection. |
-| `src/telemetry_ingestor.py` | Zero-API-key Copernicus CAMS & ECMWF/GFS satellite telemetry ingestor fetching real-time PM2.5, PM10, NO₂, SO₂, O₃, CO, wind vectors, and boundary-layer height. |
+| `src/telemetry_ingestor.py` | Zero-API-key Copernicus CAMS & ECMWF/GFS satellite telemetry ingestor featuring 5-point bilinear spatial interpolation, OpenStreetMap 1.5 km land-use micro-downscaling, and automatic local IANA timezone resolution. |
 | `src/dispersion_analyzer.py` | Indian CPCB National AQI linear sub-index calculator, dominant pollutant identifier, and atmospheric ventilation/stagnation risk analyzer. |
 | `src/gemini_advisor.py` | Gen AI health & operational advisory engine powered by `gemini-2.5-flash` (with automatic offline deterministic fallback) tailored across four citizen and municipal personas. |
-| `src/pdf_reporter.py` | Single-page enterprise FPDF2 certificate generator that dynamically stitches Esri World Street Map tiles (`Pillow`), draws a red target pin, and compiles CPCB telemetry tables. |
-| `src/alert_dispatcher.py` | Encrypted TLS SMTP (`://gmail.com`) report dispatcher for automated PDF certificate delivery. |
+| `src/pdf_reporter.py` | Single-page enterprise FPDF2 certificate generator that dynamically stitches Esri World Street Map tiles (`Pillow`), draws a red target pin, stamps local country/IST timestamps, and compiles CPCB telemetry tables. |
+| `src/alert_dispatcher.py` | Encrypted TLS SMTP (`smtp.gmail.com`) report dispatcher for automated local-timestamped PDF certificate delivery. |
 
 ### Architecture & Workflow
 
@@ -27,10 +27,10 @@ flowchart TD
         A["app.py<br>Interactive Global Dashboard"] e1@-->|"City, Lat/Lon, or Map Click"| B{"Location Input Router"}
     end
 
-    subgraph Geospatial_Telemetry_Layer["Geospatial & Satellite Telemetry Layer"]
+    subgraph Geospatial_Telemetry_Layer["Geospatial, Satellite & Micro-Climate Layer"]
         B e2@-->|"Place or Coordinates"| C["src/geocoder.py<br>Multi-Provider Global Resolver"]
-        C e3@-->|"Validated WGS84 Coords"| D["src/telemetry_ingestor.py<br>Copernicus CAMS & GFS Fetcher"]
-        D e4@-->|"Pollutants & Meteorology"| E["src/dispersion_analyzer.py<br>CPCB AQI & Ventilation Engine"]
+        C e3@-->|"Validated WGS84 Coords"| D["src/telemetry_ingestor.py<br>5-Point CAMS + OSM 1.5km Downscaler"]
+        D e4@-->|"Micro-Adjusted Pollutants & Local TZ"| E["src/dispersion_analyzer.py<br>CPCB AQI & Ventilation Engine"]
     end
 
     subgraph GenAI_Advisory_Layer["Gen AI Persona Advisory Layer"]
@@ -39,11 +39,11 @@ flowchart TD
         F e7@-->|"No - Zero-Key Fallback"| H["Deterministic Persona Engine"]
     end
 
-    subgraph Enterprise_Reporting_Layer["Enterprise PDF & Dispatch Layer"]
-        E e8@-->|"Metrics & Sub-Indices"| I["src/pdf_reporter.py<br>Esri Tile Stitcher + FPDF2"]
+    subgraph Enterprise_Reporting_Layer["Enterprise Local-Time PDF & Dispatch Layer"]
+        E e8@-->|"Metrics, Sub-Indices & Local TZ"| I["src/pdf_reporter.py<br>Esri Tile Stitcher + ZoneInfo + FPDF2"]
         G e9@-->|"Hyper-Local Brief"| I
         H e10@-->|"Structured Brief"| I
-        I e11@-->|"Single-Page PDF Bytes"| J["Download & TLS SMTP Dispatch"]
+        I e11@-->|"Timestamped Single-Page PDF"| J["Local-Time Download & TLS SMTP Dispatch"]
     end
 
     e1@{ animate: true }
@@ -61,9 +61,9 @@ flowchart TD
 
 ### Key Capabilities
 
-* **Click-Anywhere Global Telemetry:** Click any street, industrial belt, or coastline on the interactive Folium map—or search by city name or exact coordinates—to sample live Copernicus CAMS air quality and 24-hour pollutant trajectories.
+* **Click-Anywhere Global Telemetry & Micro-Downscaling:** Click any street, industrial belt, or coastline on the interactive Folium map—or search by city name or exact coordinates—to sample 5-point bilinear Copernicus CAMS air quality refined with 1.5 km OpenStreetMap industrial, arterial highway, and coastal/green dispersion factors.
 * **CPCB Standards & Dispersion Physics:** Computes official CPCB linear sub-indices (`PM2.5`, `PM10`, `NO₂`, `O₃`) alongside atmospheric ventilation indices (`Wind Speed × Mixing Layer Height`) to detect pollutant stagnation traps.
-* **Persona-Tailored AI & Stitched-Map PDFs:** Generates actionable guidance for *General Citizens*, *Sensitive Groups*, *Outdoor Workers*, and *Municipal Planners*, and exports a single-page enterprise PDF certificate with an embedded Esri target map.
+* **Persona-Tailored AI & Local-Time Stitched-Map PDFs:** Generates actionable guidance for *General Citizens*, *Sensitive Groups*, *Outdoor Workers*, and *Municipal Planners*, and exports a single-page enterprise PDF certificate with an embedded Esri target map, automatically stamped in the target location's local timezone (e.g., `IST`, `JST`, `UTC`) in both the report and filename.
 
 ## Repository Structure
 
@@ -76,15 +76,15 @@ AeroGuard-Urban-AQI-Assistant/
 │   └── aqi_thresholds.json            # CPCB National AQI breakpoints & health rules
 ├── src/
 │   ├── __init__.py                    # Core package initializer
-│   ├── telemetry_ingestor.py          # Copernicus CAMS & GFS satellite data fetcher
+│   ├── telemetry_ingestor.py          # 5-point CAMS fetcher + OSM micro-downscaler
 │   ├── dispersion_analyzer.py         # CPCB AQI calculator & ventilation risk engine
 │   ├── gemini_advisor.py              # Gemini 2.5 Flash & deterministic persona advisor
 │   ├── geocoder.py                    # Multi-provider global geocoder & marine detector
-│   ├── pdf_reporter.py                # FPDF2 report builder with stitched Esri map tiles
+│   ├── pdf_reporter.py                # FPDF2 report builder with stitched Esri map & ZoneInfo
 │   └── alert_dispatcher.py            # Encrypted TLS SMTP email report sender
 ├── tests/
 │   ├── __init__.py
-│   └── test_aqi_engine.py             # Automated Pytest suite for AQI math & PDF output
+│   └── test_aqi_engine.py             # Automated Pytest suite for AQI math, TZ & PDF output
 ├── .gitignore
 ├── app.py                             # Main interactive Streamlit web console
 ├── README.md
@@ -151,7 +151,7 @@ This repository is licensed under the MIT License — Copyright (c) 2026 [SRINIV
 
 ## Disclaimer
 
-This platform is an open-access satellite and atmospheric model screening tool intended for public awareness, research, and preliminary environmental assessment. Satellite assimilation grids (~11 km resolution) measure regional atmospheric columns; verify critical regulatory or clinical decisions with certified CPCB/SPCB ground monitoring stations and healthcare professionals.
+This platform is an open-access satellite and atmospheric model screening tool intended for public awareness, research, and preliminary environmental assessment. Satellite assimilation grids (~11 km resolution) combined with land-use downscaling estimate regional and neighborhood conditions; verify critical regulatory or clinical decisions with certified CPCB/SPCB ground monitoring stations and healthcare professionals.
 
 ## ⭐ Support & Contribution
 
@@ -159,7 +159,6 @@ If you clone, test, or build upon this repository, please consider giving it a *
 
 * **Found a bug or have an idea?** Open an [Issue](https://github.com).
 * **Want to improve the code?** Feel free to **Fork** this repository and submit a Pull Request.
-
 * **Lead Architect & Developer:** [Srinivasta](https://github.com/SRINIVASTA)
 
 ### 🌐 Let’s Connect
@@ -169,3 +168,5 @@ If you clone, test, or build upon this repository, please consider giving it a *
 [![Email](https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:tasrinivass@gmail.com)
 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/SRINIVASTA)
 [![Website](https://img.shields.io/badge/Website-000000?style=for-the-badge&logo=website&logoColor=white)](https://srinivasta.github.io)
+
+💡 *“Engineered with multi-cell satellite interpolation, OpenStreetMap micro-climate physics, and local-timezone PDF automation to bridge the gap between raw atmospheric telemetry and actionable urban health intelligence.”*
