@@ -53,7 +53,7 @@ class EnterpriseEmailService:
         part["Content-Disposition"] = f'attachment; filename="{filename}"'
         msg.attach(part)
 
-        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=15)
+        server = smtplib.SMTP("://gmail.com", 587, timeout=15)
         try:
             server.starttls()
             server.login(sender_email, app_password)
@@ -71,15 +71,21 @@ def dispatch_pdf_report(
     pdf_bytes: bytes,
     smtp_user: str,
     smtp_password: str,
+    attachment_name: Optional[str] = None,
+    local_timestamp: Optional[str] = None,
 ) -> int:
     """Wrapper called by app.py to send AeroGuard AQI certificates via EnterpriseEmailService."""
     city_slug = next(iter(city_name.split(","))).strip().replace(" ", "_")
-    filename = f"AeroGuard_AQI_{city_slug}.pdf"
-    subject = f"AeroGuard AQI Alert & Technical Report: {city_name} (AQI {aqi_score})"
+    filename = attachment_name or f"AeroGuard_AQI_{city_slug}.pdf"
+    time_suffix = f" | {local_timestamp}" if local_timestamp else ""
+    time_line = f"Report Generated: {local_timestamp}\n" if local_timestamp else ""
+
+    subject = f"AeroGuard AQI Alert & Technical Report: {city_name} (AQI {aqi_score}{time_suffix})"
     body = (
         f"Hello,\n\n"
         f"Please find attached your automated AeroGuard Urban Air Quality Intelligence Report for {city_name}.\n"
-        f"Current CPCB AQI Score: {aqi_score}.\n\n"
+        f"Current CPCB AQI Score: {aqi_score}\n"
+        f"{time_line}\n"
         f"Regards,\nAeroGuard Operational Console"
     )
     return EnterpriseEmailService.send_report(
