@@ -1,9 +1,10 @@
-"""AeroGuard Urban Air Quality Assistant - Interactive Streamlit Console."""
+"""AeroGuard Urban Air Quality Assistant - 100% Dynamic Global Console."""
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from src.geocoder import resolve_location, resolve_coordinates
 from src.telemetry_ingestor import fetch_air_telemetry
 from src.dispersion_analyzer import compute_cpcb_aqi, analyze_dispersion
 from src.gemini_advisor import generate_persona_advisory
@@ -12,33 +13,46 @@ from src.alert_dispatcher import dispatch_pdf_report
 
 
 st.set_page_config(
-    page_title="AeroGuard | Urban Air Quality AI Assistant",
+    page_title="AeroGuard | Global Air Quality AI Assistant",
     page_icon="🌬️",
     layout="wide",
 )
 
-# Support URL query parameter locking (?city=Visakhapatnam)
-query_city = st.query_params.get("city", "Visakhapatnam")
-
-st.title("🌬️ AeroGuard — Urban Air Quality & Public Health AI Assistant")
+st.title("🌬️ AeroGuard — Live Global Urban Air Quality & Health AI Assistant")
 st.caption(
-    "Real-time Copernicus CAMS Satellite Telemetry, CPCB AQI Analytics, Atmospheric Dispersion Modeling & Gemini Health Advisories"
+    "100% Dynamic Worldwide Copernicus CAMS Satellite Telemetry, AQI Analytics, Atmospheric Dispersion & AI Health Advisories"
 )
 
 with st.sidebar:
-    st.header("📍 Urban Zone & Persona")
-    preset_choice = st.selectbox(
-        "Quick-Select Indian Metro",
-        options=["Custom Search"] + list(DEFAULT_CITIES.keys()),
-        index=(list(DEFAULT_CITIES.keys()).index(query_city) + 1) if query_city in DEFAULT_CITIES else 1,
+    st.header("🌍 Live Global Target")
+    search_mode = st.radio(
+        "Select Input Type",
+        options=["Type City / Place Name", "Type Latitude & Longitude"],
     )
 
-    custom_query = st.text_input(
-        "Or Enter Any City / Neighborhood",
-        value=query_city if preset_choice == "Custom Search" else preset_choice,
-        help="Resolves street or city coordinates via OpenStreetMap Nominatim.",
-    )
+    if search_mode == "Type City / Place Name":
+        city_input = st.text_input(
+            "City / Town / Area Worldwide",
+            value=st.query_params.get("city", "Visakhapatnam"),
+            placeholder="Type any place on Earth (e.g., Gajuwaka, Tokyo, Paris, Cairo)",
+        )
+    else:
+        lat_input = st.number_input(
+            "Latitude (-90.0 to 90.0)",
+            min_value=-90.0,
+            max_value=90.0,
+            value=float(st.query_params.get("lat", 17.6868)),
+            format="%.4f",
+        )
+        lon_input = st.number_input(
+            "Longitude (-180.0 to 180.0)",
+            min_value=-180.0,
+            max_value=180.0,
+            value=float(st.query_params.get("lon", 83.2185)),
+            format="%.4f",
+        )
 
+    st.divider()
     persona = st.selectbox(
         "Advisory Persona",
         options=[
@@ -49,19 +63,19 @@ with st.sidebar:
         ],
     )
 
-    st.divider()
-    st.subheader("🤖 Gen AI Configuration")
     user_gemini_key = st.text_input(
         "Gemini API Key (Optional)",
         type="password",
-        help="Leave blank to use Streamlit Secrets or built-in deterministic advisory engine.",
+        help="Optional: Leave blank to use the built-in deterministic advisory engine.",
     )
 
-target_query = custom_query if preset_choice == "Custom Search" else preset_choice
-
 try:
-    with st.spinner(f"Resolving coordinates and ingesting live satellite telemetry for {target_query}..."):
-        location = resolve_location(target_query)
+    with st.spinner("Resolving live coordinates and ingesting real-time satellite telemetry..."):
+        if search_mode == "Type City / Place Name":
+            location = resolve_location(city_input)
+        else:
+            location = resolve_coordinates(lat_input, lon_input)
+
         telemetry = fetch_air_telemetry(location["lat"], location["lon"])
         aqi_report = compute_cpcb_aqi(telemetry["pollutants"])
         dispersion = analyze_dispersion(telemetry["meteorology"])
@@ -79,13 +93,17 @@ try:
             api_key=active_key,
         )
 
-    # Top Status Banner
+    # Top Status Banner with Live Resolved Place & Exact Coordinates
     st.markdown(
         f"""
         <div style="padding:16px; border-radius:10px; background-color:{aqi_report['color']}22; border-left:6px solid {aqi_report['color']}; margin-bottom:16px;">
             <h3 style="margin:0; color:#111;">{location['name']}</h3>
+            <p style="margin:4px 0; font-size:13px; color:#333;">
+                📍 <strong>Live Coordinates:</strong> {location['lat']:.4f}° N, {location['lon']:.4f}° E &nbsp;|&nbsp;
+                <strong>Metadata:</strong> {location['zone']}
+            </p>
             <p style="margin:4px 0 0 0; font-size:15px;">
-                <strong>CPCB AQI: {aqi_report['aqi']} ({aqi_report['category']})</strong> &nbsp;|&nbsp;
+                <strong>Live AQI: {aqi_report['aqi']} ({aqi_report['category']})</strong> &nbsp;|&nbsp;
                 Dominant Pollutant: <strong>{aqi_report['dominant_pollutant']}</strong> &nbsp;|&nbsp;
                 {aqi_report['health_impact']}
             </p>
@@ -94,22 +112,21 @@ try:
         unsafe_allow_html=True,
     )
 
-    # Key Telemetry KPIs
+    # Live Telemetry KPIs
     pol = telemetry["pollutants"]
     met = telemetry["meteorology"]
     c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("CPCB AQI", f"{aqi_report['aqi']}", aqi_report["category"])
+    c1.metric("Live AQI", f"{aqi_report['aqi']}", aqi_report["category"])
     c2.metric("PM2.5 (µg/m³)", f"{pol['pm2_5']:.1f}")
     c3.metric("PM10 (µg/m³)", f"{pol['pm10']:.1f}")
     c4.metric("NO₂ (µg/m³)", f"{pol['no2']:.1f}")
     c5.metric("Wind Speed", f"{met['wind_speed_kmh']:.1f} km/h")
     c6.metric("Mixing Layer", f"{met['boundary_layer_m']:.0f} m")
 
-    # Main Two-Column Analytical View
     left_col, right_col = st.columns([1.15, 1])
 
     with left_col:
-        st.subheader("📈 24-Hour Pollutant Trajectory")
+        st.subheader("📈 Live 24-Hour Pollutant Trajectory")
         hourly = telemetry.get("hourly", {})
         if hourly and "time" in hourly:
             df_hourly = pd.DataFrame(
@@ -126,16 +143,20 @@ try:
                 y=["PM2.5 (µg/m³)", "PM10 (µg/m³)", "NO₂ (µg/m³)"],
                 markers=True,
             )
-            fig.update_layout(height=340, margin=dict(l=10, r=10, t=20, b=10), legend_title_text="Pollutant")
+            fig.update_layout(height=320, margin=dict(l=10, r=10, t=20, b=10), legend_title_text="Pollutant")
             st.plotly_chart(fig, use_container_width=True)
 
+        st.subheader("🗺️ Live Coordinate Map Pin")
+        map_df = pd.DataFrame({"lat": [location["lat"]], "lon": [location["lon"]]})
+        st.map(map_df, zoom=9, use_container_width=True)
+
+    with right_col:
         st.subheader("🌀 Atmospheric Dispersion & Ventilation")
         st.info(
             f"**{dispersion['dispersion_status']}** (Ventilation Index: `{dispersion['ventilation_index']}`)\n\n"
             f"{dispersion['dispersion_summary']}"
         )
 
-    with right_col:
         st.subheader(f"🧠 AI Health & Action Advisory ({persona})")
         st.success(advisory_text)
 
@@ -148,10 +169,11 @@ try:
             advisory_text=advisory_text,
             persona=persona,
         )
+        safe_city_slug = location["name"].split(",").strip().replace(" ", "_")
         st.download_button(
             label="⬇️ Download AQI Compliance Certificate (.PDF)",
             data=pdf_bytes,
-            file_name=f"AeroGuard_AQI_{location['name'].split(',')[0].strip()}.pdf",
+            file_name=f"AeroGuard_AQI_{safe_city_slug}.pdf",
             mime="application/pdf",
             use_container_width=True,
         )
