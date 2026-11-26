@@ -1,6 +1,9 @@
 """AeroGuard Urban Air Quality Assistant - True Click-Anywhere Global Geospatial Console."""
 
+from datetime import datetime
 import os
+from zoneinfo import ZoneInfo
+
 import folium
 import pandas as pd
 import plotly.express as px
@@ -225,6 +228,20 @@ try:
             persona=persona,
         )
         city_prefix = next(iter(location["name"].split(","))).strip().replace(" ", "_")
+        tz_name = telemetry.get("timezone", "Asia/Kolkata")
+        try:
+            local_now = datetime.now(ZoneInfo(tz_name))
+        except Exception:  # pylint: disable=broad-except
+            local_now = datetime.now(ZoneInfo("Asia/Kolkata"))
+
+        tz_label = (
+            "IST"
+            if tz_name in ("Asia/Kolkata", "Asia/Calcutta")
+            else (telemetry.get("timezone_abbr") or local_now.strftime("%Z"))
+        )
+        display_timestamp = f"{local_now.strftime('%d %b %Y, %I:%M %p')} {tz_label}"
+        file_timestamp = f"{local_now.strftime('%Y-%m-%d_%I-%M-%p')}_{tz_label}"
+        pdf_filename = f"AeroGuard_AQI_{city_prefix}_{file_timestamp}.pdf"
 
         with st.container(border=True):
             recipient = st.text_input(
@@ -236,7 +253,7 @@ try:
                 st.download_button(
                     label="⬇️ Download PDF Report",
                     data=pdf_bytes,
-                    file_name=f"AeroGuard_AQI_{city_prefix}.pdf",
+                    file_name=pdf_filename,
                     mime="application/pdf",
                     use_container_width=True,
                 )
@@ -250,7 +267,16 @@ try:
                     try:
                         smtp_user = _get_secret_safe("gmail", "username")
                         smtp_pass = _get_secret_safe("gmail", "app_password")
-                        dispatch_pdf_report(recipient.strip(), location["name"], aqi_report["aqi"], pdf_bytes, smtp_user, smtp_pass)
+                        dispatch_pdf_report(
+                            recipient_email=recipient.strip(),
+                            city_name=location["name"],
+                            aqi_score=aqi_report["aqi"],
+                            pdf_bytes=pdf_bytes,
+                            smtp_user=smtp_user,
+                            smtp_password=smtp_pass,
+                            attachment_name=pdf_filename,
+                            local_timestamp=display_timestamp,
+                        )
                         st.success(f"Certificate dispatched to {recipient.strip()}!")
                     except Exception as mail_err:  # pylint: disable=broad-except
                         st.error(f"Email dispatch unavailable: {mail_err}")
