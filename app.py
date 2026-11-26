@@ -125,17 +125,17 @@ try:
             api_key=active_key,
         )
 
-    # Top Status Banner
+    # Top Status Banner (High Contrast for Dark & Light Themes)
     st.markdown(
         f"""
-        <div style="padding:16px; border-radius:10px; background-color:{aqi_report['color']}22; border-left:6px solid {aqi_report['color']}; margin-bottom:16px;">
-            <h3 style="margin:0; color:#111;">{location['name']}</h3>
-            <p style="margin:4px 0; font-size:13px; color:#333;">
+        <div style="padding:16px; border-radius:10px; background-color:#1E2530; border-left:6px solid {aqi_report['color']}; margin-bottom:16px;">
+            <h3 style="margin:0; color:#FAFAFA;">{location['name']}</h3>
+            <p style="margin:4px 0; font-size:13px; color:#D1D5DB;">
                 📍 <strong>Live Coordinates:</strong> {location['lat']:.5f}° N, {location['lon']:.5f}° E &nbsp;|&nbsp;
                 <strong>Metadata:</strong> {location['zone']} &nbsp;|&nbsp;
                 <strong>Grid:</strong> Copernicus CAMS (~11 km cell)
             </p>
-            <p style="margin:4px 0 0 0; font-size:15px;">
+            <p style="margin:4px 0 0 0; font-size:15px; color:#FAFAFA;">
                 <strong>Live AQI: {aqi_report['aqi']} ({aqi_report['category']})</strong> &nbsp;|&nbsp;
                 Dominant Pollutant: <strong>{aqi_report['dominant_pollutant']}</strong> &nbsp;|&nbsp;
                 {aqi_report['health_impact']}
