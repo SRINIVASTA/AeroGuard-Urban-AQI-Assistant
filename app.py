@@ -1,7 +1,9 @@
 """AeroGuard Urban Air Quality Assistant - 100% Dynamic Global Console."""
 
+import os
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 from src.geocoder import resolve_location, resolve_coordinates
@@ -17,6 +19,15 @@ st.set_page_config(
     page_icon="🌬️",
     layout="wide",
 )
+
+
+def _get_secret_safe(section: str, key: str) -> str:
+    """Safely reads Streamlit secrets without crashing when secrets.toml is absent."""
+    try:
+        return st.secrets[section][key]
+    except Exception:  # pylint: disable=broad-except
+        return os.getenv(f"{section.upper()}_{key.upper()}", "")
+
 
 st.title("🌬️ AeroGuard — Live Global Urban Air Quality & Health AI Assistant")
 st.caption(
@@ -80,10 +91,7 @@ try:
         aqi_report = compute_cpcb_aqi(telemetry["pollutants"])
         dispersion = analyze_dispersion(telemetry["meteorology"])
 
-        secret_gemini_key = ""
-        if "gemini" in st.secrets:
-            secret_gemini_key = st.secrets["gemini"].get("api_key", "")
-        active_key = user_gemini_key or secret_gemini_key
+        active_key = user_gemini_key or _get_secret_safe("gemini", "api_key")
 
         advisory_text = generate_persona_advisory(
             city_name=location["name"],
@@ -126,6 +134,38 @@ try:
     left_col, right_col = st.columns([1.15, 1])
 
     with left_col:
+        st.subheader("🗺️ Live Satellite Telemetry & Geospatial Grid Map")
+        map_fig = go.Figure(
+            go.Scattermapbox(
+                lat=[location["lat"]],
+                lon=[location["lon"]],
+                mode="markers+text",
+                marker=go.scattermapbox.Marker(
+                    size=26,
+                    color=aqi_report["color"],
+                    opacity=0.85,
+                ),
+                text=[f"{location['name']} | AQI: {aqi_report['aqi']} ({aqi_report['category']})"],
+                textposition="top center",
+                hovertemplate=(
+                    f"<b>{location['name']}</b><br>"
+                    f"Lat: {location['lat']:.4f}, Lon: {location['lon']:.4f}<br>"
+                    f"AQI: {aqi_report['aqi']} ({aqi_report['category']})<br>"
+                    f"PM2.5: {pol['pm2_5']:.1f} µg/m³ | PM10: {pol['pm10']:.1f} µg/m³<extra></extra>"
+                ),
+            )
+        )
+        map_fig.update_layout(
+            mapbox_style="open-street-map",
+            mapbox=dict(
+                center=dict(lat=location["lat"], lon=location["lon"]),
+                zoom=10,
+            ),
+            margin=dict(l=0, r=0, t=0, b=0),
+            height=330,
+        )
+        st.plotly_chart(map_fig, use_container_width=True)
+
         st.subheader("📈 Live 24-Hour Pollutant Trajectory")
         hourly = telemetry.get("hourly", {})
         if hourly and "time" in hourly:
@@ -143,12 +183,8 @@ try:
                 y=["PM2.5 (µg/m³)", "PM10 (µg/m³)", "NO₂ (µg/m³)"],
                 markers=True,
             )
-            fig.update_layout(height=320, margin=dict(l=10, r=10, t=20, b=10), legend_title_text="Pollutant")
+            fig.update_layout(height=300, margin=dict(l=10, r=10, t=20, b=10), legend_title_text="Pollutant")
             st.plotly_chart(fig, use_container_width=True)
-
-        st.subheader("🗺️ Live Coordinate Map Pin")
-        map_df = pd.DataFrame({"lat": [location["lat"]], "lon": [location["lon"]]})
-        st.map(map_df, zoom=9, use_container_width=True)
 
     with right_col:
         st.subheader("🌀 Atmospheric Dispersion & Ventilation")
@@ -182,8 +218,8 @@ try:
             recipient = st.text_input("Recipient Email Address", placeholder="citizen@example.com")
             if st.button("Send PDF Report"):
                 try:
-                    smtp_user = st.secrets.get("gmail", {}).get("username", "")
-                    smtp_pass = st.secrets.get("gmail", {}).get("app_password", "")
+                    smtp_user = _get_secret_safe("gmail", "username")
+                    smtp_pass = _get_secret_safe("gmail", "app_password")
                     dispatch_pdf_report(recipient, location["name"], aqi_report["aqi"], pdf_bytes, smtp_user, smtp_pass)
                     st.success(f"Certificate sent successfully to {recipient}!")
                 except Exception as mail_err:  # pylint: disable=broad-except
