@@ -146,8 +146,7 @@ streamlit run app.py
 Open your browser and navigate to `http://localhost:8501`.
 
 ## License
-
-This repository is licensed under the MIT License — Copyright (c) 2026 [SRINIVASTA](https://github.com/SRINIVASTA).
+Distributed under the [MIT License](LICENSE).
 
 ## Disclaimer
 
