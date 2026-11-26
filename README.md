@@ -2,6 +2,8 @@
 
 A cloud-native geospatial intelligence console for real-time global air quality monitoring, multi-cell atmospheric dispersion modeling, persona-driven Gemini AI health advisories, and automated enterprise PDF compliance reporting with stitched satellite map tiles and local timezone stamping.
 
+> **Hack2Skill Submission Note:** Architected and refined using **Google Antigravity** and **Google AI Studio**, powered by **Gemini 2.5 Flash** (
+
 ## About
 
 AeroGuard provides a zero-API-cost, worldwide air quality intelligence pipeline that resolves any typed city, exact latitude/longitude, or interactive map click into live Copernicus CAMS satellite telemetry, 5-point bilinear spatial interpolation with OpenStreetMap 1.5 km micro-environment land-use downscaling, Indian CPCB National AQI sub-indices, boundary-layer ventilation physics, and executive PDF certificates stamped in the target location's local timezone (e.g., IST for India).
