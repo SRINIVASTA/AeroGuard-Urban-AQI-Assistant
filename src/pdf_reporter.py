@@ -82,8 +82,9 @@ def build_aqi_certificate(
     pdf.set_font("Helvetica", "", 10)
     pdf.multi_cell(0, 5.5, _sanitize_latin1(advisory_text))
 
-    # Footer Disclaimer
-    pdf.set_y(-22)
+    # Footer Disclaimer (Strictly Single-Page Fit)
+    pdf.set_auto_page_break(auto=False)
+    pdf.set_y(-24)
     pdf.set_font("Helvetica", "I", 8)
     pdf.set_text_color(100, 100, 100)
     pdf.multi_cell(
