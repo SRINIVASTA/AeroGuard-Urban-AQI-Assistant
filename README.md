@@ -2,7 +2,7 @@
 
 A cloud-native geospatial intelligence console for real-time global air quality monitoring, multi-cell atmospheric dispersion modeling, persona-driven Gemini AI health advisories, and automated enterprise PDF compliance reporting with stitched satellite map tiles and local timezone stamping.
 
-> **Hack2Skill Submission Note:** Architected and refined using **Google Antigravity** and **Google AI Studio**, powered by **Gemini 2.5 Flash** (
+> **Hack2Skill Submission Note:** Powered by **Google Gemini (`gemini-2.5-flash`)** via the `google-genai` SDK for persona-tailored urban air quality and health intelligence, combined with Copernicus CAMS satellite telemetry and OpenStreetMap micro-climate downscaling.
 
 ## About
 
