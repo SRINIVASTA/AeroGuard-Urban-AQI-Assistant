@@ -3,8 +3,9 @@
 import hashlib
 import io
 import math
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, Any, Optional
+from zoneinfo import ZoneInfo
 
 import requests
 from fpdf import FPDF
@@ -102,10 +103,22 @@ def build_aqi_certificate(
     pdf.add_page()
     pdf.set_auto_page_break(auto=False)
 
-    now_utc = datetime.now(timezone.utc)
-    digest = hashlib.sha1(f"{location['lat']}:{location['lon']}:{now_utc.isoformat()}".encode()).hexdigest()[:6].upper()
-    ref_id = f"AER-{now_utc.strftime('%Y%m%d')}-{digest}"
-    stamp_str = now_utc.strftime("%d %b %Y, %H:%M UTC")
+    tz_name = telemetry.get("timezone", "Asia/Kolkata")
+    try:
+        local_tz = ZoneInfo(tz_name)
+    except Exception:  # pylint: disable=broad-except
+        local_tz = ZoneInfo("Asia/Kolkata")
+
+    now_local = datetime.now(local_tz)
+    tz_label = (
+        "IST"
+        if tz_name in ("Asia/Kolkata", "Asia/Calcutta")
+        else (telemetry.get("timezone_abbr") or now_local.strftime("%Z"))
+    )
+
+    digest = hashlib.sha1(f"{location['lat']}:{location['lon']}:{now_local.isoformat()}".encode()).hexdigest()[:6].upper()
+    ref_id = f"AER-{now_local.strftime('%Y%m%d')}-{digest}"
+    stamp_str = f"{now_local.strftime('%d %b %Y, %I:%M %p')} {tz_label}"
 
     # Top Navy Enterprise Banner
     pdf.set_fill_color(15, 44, 89)
