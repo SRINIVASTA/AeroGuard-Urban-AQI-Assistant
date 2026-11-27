@@ -10,6 +10,8 @@ AeroGuard provides a zero-API-cost, worldwide air quality intelligence pipeline 
 
 Built and maintained by [@SRINIVASTA](https://github.com/SRINIVASTA), this repository hosts a click-anywhere Folium geospatial interface, a multi-provider global geocoder, a hybrid satellite + OSM micro-climate ingestor, a CPCB linear sub-index & dispersion engine, a Gemini 2.5 Flash persona advisor (with deterministic fallback), and an FPDF2 stitched-map certificate builder.
 
+<img src="assets/desktop.png" width="100%" alt="Desktop Preview">
+
 ## Modules in this repo
 
 | Module | Description |
