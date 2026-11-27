@@ -143,7 +143,7 @@ def fetch_air_telemetry(lat: float, lon: float) -> Dict[str, Any]:
         osm_elements = osm_future.result()
 
     aq_list = aq_raw if isinstance(aq_raw, list) else [aq_raw]
-    primary_aq = aq_list
+    primary_aq = aq_list[0]
     current_wx = wx_data.get("current", {})
     wind_kmh = float(current_wx.get("wind_speed_10m") or 0.0)
 
@@ -159,7 +159,7 @@ def fetch_air_telemetry(lat: float, lon: float) -> Dict[str, Any]:
     total_w = 0.0
 
     for idx, item in enumerate(aq_list):
-        w = offsets[idx] if idx < len(offsets) else 0.1
+        w = offsets[idx][2] if idx < len(offsets) else 0.1
         cur = item.get("current", {})
         for out_k, api_k in keys_map.items():
             pollutants[out_k] += float(cur.get(api_k) or 0.0) * w
