@@ -2,12 +2,36 @@
 
 from typing import Dict, Any
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 HEADERS = {
     "User-Agent": "AeroGuard-Urban-AQI-Assistant/1.0",
     "Accept": "*/*",
     "Accept-Language": "en-US,en;q=0.9",
 }
+
+
+def _create_geocoder_session() -> requests.Session:
+    """Creates a resilient HTTP session with automatic retries for transient timeouts."""
+    session = requests.Session()
+    session.headers.update(HEADERS)
+    retry_strategy = Retry(
+        total=2,
+        connect=2,
+        read=2,
+        backoff_factor=0.6,  # Waits 0.6s, 1.2s between retries before falling back
+        status_forcelist=,
+        allowed_methods=["GET"],
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
+
+
+GEO_SESSION = _create_geocoder_session()
 
 
 def resolve_location(query: str) -> Dict[str, Any]:
@@ -21,7 +45,7 @@ def resolve_location(query: str) -> Dict[str, Any]:
     om_error = ""
     try:
         om_params = {"name": cleaned, "count": 1, "language": "en", "format": "json"}
-        resp = requests.get(om_host, params=om_params, headers=HEADERS, timeout=12)
+        resp = GEO_SESSION.get(om_host, params=om_params, timeout=(6, 15))
         resp.raise_for_status()
         data = resp.json()
         results = data.get("results", ())
@@ -43,7 +67,7 @@ def resolve_location(query: str) -> Dict[str, Any]:
     nom_host = "".join(("https://", "nominatim.", "openstreetmap.", "org/search"))
     try:
         nom_params = {"q": cleaned, "format": "json", "limit": 1, "accept-language": "en", "addressdetails": 1}
-        nom_resp = requests.get(nom_host, params=nom_params, headers=HEADERS, timeout=12)
+        nom_resp = GEO_SESSION.get(nom_host, params=nom_params, timeout=(6, 15))
         nom_resp.raise_for_status()
         nom_results = nom_resp.json()
         if nom_results:
@@ -81,7 +105,7 @@ def resolve_coordinates(lat: float, lon: float) -> Dict[str, Any]:
     try:
         bdc_host = "".join(("https://", "api.", "bigdatacloud.", "net/data/reverse-geocode-client"))
         params = {"latitude": lat_r, "longitude": lon_r, "localityLanguage": "en"}
-        resp = requests.get(bdc_host, params=params, headers=HEADERS, timeout=10)
+        resp = GEO_SESSION.get(bdc_host, params=params, timeout=(5, 12))
         if resp.status_code == 200:
             info = resp.json()
             locality = info.get("locality") or info.get("city") or ""
@@ -113,7 +137,7 @@ def resolve_coordinates(lat: float, lon: float) -> Dict[str, Any]:
     try:
         nom_rev = "".join(("https://", "nominatim.", "openstreetmap.", "org/reverse"))
         n_params = {"lat": lat_r, "lon": lon_r, "format": "json", "accept-language": "en", "addressdetails": 1}
-        n_resp = requests.get(nom_rev, params=n_params, headers=HEADERS, timeout=10)
+        n_resp = GEO_SESSION.get(nom_rev, params=n_params, timeout=(5, 12))
         if n_resp.status_code == 200:
             n_data = n_resp.json()
             disp = n_data.get("display_name", "")
