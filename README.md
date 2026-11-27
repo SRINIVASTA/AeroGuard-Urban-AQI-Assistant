@@ -147,7 +147,7 @@ app_password = "your-16-char-app-password"
 streamlit run app.py
 ```
 
-Open your browser and navigate to `http://localhost:8501`.
+Open your browser and navigate to `[http://localhost:8501](https://aeroguard-urban-aqi-assistant-6r4wbwobm4b3qwgmxzbxsc.streamlit.app/)`.
 
 ## License
 Distributed under the [MIT License](LICENSE).
