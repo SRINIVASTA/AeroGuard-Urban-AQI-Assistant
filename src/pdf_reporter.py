@@ -13,8 +13,31 @@ from PIL import Image, ImageDraw
 
 
 def _sanitize_latin1(text: str) -> str:
-    """Sanitizes text to Latin-1 for FPDF2 compatibility."""
-    clean = text.replace("**", "").replace("•", "-").replace("µ", "u").replace("²", "2").replace("°", " deg")
+    """Sanitizes text, emojis, and LaTeX symbols to clean Latin-1 for FPDF2."""
+    replacements = {
+        "**": "",
+        "*✨ ": "",
+        "*⚙️ ": "",
+        "*": "",
+        "✨": "[AI]",
+        "⚙️": "[Rule]",
+        "•": "-",
+        "–": "-",
+        "—": "-",
+        "µ": "u",
+        "²": "2",
+        "³": "3",
+        "°": " deg",
+        "$O_3$": "O3",
+        "$PM_{2.5}$": "PM2.5",
+        "$PM_{10}$": "PM10",
+        "$NO_2$": "NO2",
+        "$SO_2$": "SO2",
+        "$": "",
+    }
+    clean = text
+    for old, new in replacements.items():
+        clean = clean.replace(old, new)
     return clean.encode("latin-1", "replace").decode("latin-1")
 
 
@@ -89,6 +112,8 @@ def _draw_table_row(pdf: FPDF, cells: tuple, widths: tuple, bold: bool = False, 
     for text, width in zip(cells, widths):
         pdf.cell(width, 5.2, _sanitize_latin1(str(text)), border=1, fill=fill)
     pdf.ln()
+
+
 def build_aqi_certificate(
     location: Dict[str, Any],
     telemetry: Dict[str, Any],
@@ -268,8 +293,10 @@ def build_aqi_certificate(
     # 6. PRELIMINARY SCREENING ADVISORY & DATA DISCLAIMER
     _draw_section_title(pdf, f"6. AI SCREENING ADVISORY ({persona.upper()}) & DISCLAIMER")
     pdf.set_font("Helvetica", "", 7.8)
-    clean_adv = _sanitize_latin1(advisory_text).replace("\n", " ")
-    pdf.multi_cell(186, 4.2, clean_adv)
+    clean_adv = " ".join(_sanitize_latin1(advisory_text).split())
+    if len(clean_adv) > 460:
+        clean_adv = clean_adv[:457].rsplit(" ", 1)[0] + "..."
+    pdf.multi_cell(186, 4.0, clean_adv)
 
     # Bottom Footer Bar (Strictly Single Page)
     pdf.set_y(284)
