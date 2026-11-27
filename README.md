@@ -2,13 +2,13 @@
 
 A cloud-native geospatial intelligence console for real-time global air quality monitoring, multi-cell atmospheric dispersion modeling, persona-driven Gemini AI health advisories, and automated enterprise PDF compliance reporting with stitched satellite map tiles and local timezone stamping.
 
-> **Hack2Skill Submission Note:** Powered by **Google Gemini (`gemini-2.5-flash`)** via the `google-genai` SDK for persona-tailored urban air quality and health intelligence, combined with Copernicus CAMS satellite telemetry and OpenStreetMap micro-climate downscaling.
+> **Hack2Skill Submission Note:** Powered by **Google Gemini (`gemini-3.5-flash-lite`)** via the `google-genai` SDK for persona-tailored urban air quality and health intelligence, combined with Copernicus CAMS satellite telemetry and OpenStreetMap micro-climate downscaling.
 
 ## About
 
 AeroGuard provides a zero-API-cost, worldwide air quality intelligence pipeline that resolves any typed city, exact latitude/longitude, or interactive map click into live Copernicus CAMS satellite telemetry, 5-point bilinear spatial interpolation with OpenStreetMap 1.5 km micro-environment land-use downscaling, Indian CPCB National AQI sub-indices, boundary-layer ventilation physics, and executive PDF certificates stamped in the target location's local timezone (e.g., IST for India).
 
-Built and maintained by [@SRINIVASTA](https://github.com/SRINIVASTA), this repository hosts a click-anywhere Folium geospatial interface, a multi-provider global geocoder, a hybrid satellite + OSM micro-climate ingestor, a CPCB linear sub-index & dispersion engine, a Gemini 2.5 Flash persona advisor (with deterministic fallback), and an FPDF2 stitched-map certificate builder.
+Built and maintained by [@SRINIVASTA](https://github.com/SRINIVASTA), this repository hosts a click-anywhere Folium geospatial interface, a multi-provider global geocoder, a hybrid satellite + OSM micro-climate ingestor, a CPCB linear sub-index & dispersion engine, a gemini-3.5-flash-lite persona advisor (with deterministic fallback), and an FPDF2 stitched-map certificate builder.
 
 <img src="assets/desktop.png" width="100%" alt="Desktop Preview">
 
@@ -19,7 +19,7 @@ Built and maintained by [@SRINIVASTA](https://github.com/SRINIVASTA), this repos
 | `src/geocoder.py` | Multi-provider global location & coordinate resolver (Open-Meteo Geocoding, BigDataCloud, and OpenStreetMap Nominatim) with offshore/marine sector detection. |
 | `src/telemetry_ingestor.py` | Zero-API-key Copernicus CAMS & ECMWF/GFS satellite telemetry ingestor featuring 5-point bilinear spatial interpolation, OpenStreetMap 1.5 km land-use micro-downscaling, and automatic local IANA timezone resolution. |
 | `src/dispersion_analyzer.py` | Indian CPCB National AQI linear sub-index calculator, dominant pollutant identifier, and atmospheric ventilation/stagnation risk analyzer. |
-| `src/gemini_advisor.py` | Gen AI health & operational advisory engine powered by `gemini-2.5-flash` (with automatic offline deterministic fallback) tailored across four citizen and municipal personas. |
+| `src/gemini_advisor.py` | Gen AI health & operational advisory engine powered by `gemini-3.5-flash-lite` (with automatic offline deterministic fallback) tailored across four citizen and municipal personas. |
 | `src/pdf_reporter.py` | Single-page enterprise FPDF2 certificate generator that dynamically stitches Esri World Street Map tiles (`Pillow`), draws a red target pin, stamps local country/IST timestamps, and compiles CPCB telemetry tables. |
 | `src/alert_dispatcher.py` | Encrypted TLS SMTP (`smtp.gmail.com`) report dispatcher for automated local-timestamped PDF certificate delivery. |
 
@@ -39,7 +39,7 @@ flowchart TD
 
     subgraph GenAI_Advisory_Layer["Gen AI Persona Advisory Layer"]
         E e5@-->|"AQI, Driver & Stagnation"| F{"Gemini API Key Provided?"}
-        F e6@-->|"Yes - Live Reasoning"| G["src/gemini_advisor.py<br>Gemini 2.5 Flash Model"]
+        F e6@-->|"Yes - Live Reasoning"| G["src/gemini_advisor.py<br>gemini-3.5-flash-lite Model"]
         F e7@-->|"No - Zero-Key Fallback"| H["Deterministic Persona Engine"]
     end
 
@@ -82,7 +82,7 @@ AeroGuard-Urban-AQI-Assistant/
 │   ├── __init__.py                    # Core package initializer
 │   ├── telemetry_ingestor.py          # 5-point CAMS fetcher + OSM micro-downscaler
 │   ├── dispersion_analyzer.py         # CPCB AQI calculator & ventilation risk engine
-│   ├── gemini_advisor.py              # Gemini 2.5 Flash & deterministic persona advisor
+│   ├── gemini_advisor.py              # gemini-3.5-flash-lite & deterministic persona advisor
 │   ├── geocoder.py                    # Multi-provider global geocoder & marine detector
 │   ├── pdf_reporter.py                # FPDF2 report builder with stitched Esri map & ZoneInfo
 │   └── alert_dispatcher.py            # Encrypted TLS SMTP email report sender
