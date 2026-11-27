@@ -31,8 +31,16 @@ def generate_persona_advisory(
                 f"Include specific timing, protective gear/filtration, and exposure thresholds. Keep under 120 words."
             )
 
-            last_err = ""
-            for model_name in ("gemini-2.5-flash", "gemini-2.0-flash"):
+            candidate_models = [
+                "gemini-3.5-flash-lite",
+                "gemini-3.8-flash",
+                "gemini-3.5-flash",
+                "gemini-3.1-flash-lite",
+                "gemini-2.5-flash",
+            ]
+
+            errors = []
+            for model_name in candidate_models:
                 try:
                     response = client.models.generate_content(
                         model=model_name,
@@ -41,9 +49,23 @@ def generate_persona_advisory(
                     if response and response.text:
                         return f"{response.text.strip()}\n\n*✨ Engine: Live Google Gemini ({model_name})*"
                 except Exception as model_err:  # pylint: disable=broad-except
-                    last_err = str(model_err)
+                    errors.append(f"{model_name}: {str(model_err)[:60]}")
 
-            fallback_reason = last_err[:120] if last_err else "Empty response from Gemini"
+            # Auto-discover any active Flash model available to this API key
+            try:
+                for m in client.models.list():
+                    m_id = getattr(m, "name", "").replace("models/", "")
+                    if "flash" in m_id and m_id not in candidate_models and "image" not in m_id and "tts" not in m_id and "live" not in m_id:
+                        response = client.models.generate_content(
+                            model=m_id,
+                            contents=prompt,
+                        )
+                        if response and response.text:
+                            return f"{response.text.strip()}\n\n*✨ Engine: Live Google Gemini ({m_id})*"
+            except Exception as list_err:  # pylint: disable=broad-except
+                errors.append(f"list: {str(list_err)[:60]}")
+
+            fallback_reason = errors[0] if errors else "Empty response from Gemini"
         except ImportError:
             fallback_reason = "google-genai package not installed in requirements.txt"
         except Exception as err:  # pylint: disable=broad-except
