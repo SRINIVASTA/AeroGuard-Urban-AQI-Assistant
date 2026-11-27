@@ -20,8 +20,8 @@ def _create_geocoder_session() -> requests.Session:
         total=2,
         connect=2,
         read=2,
-        backoff_factor=0.6,  # Waits 0.6s, 1.2s between retries before falling back
-        status_forcelist=,
+        backoff_factor=0.6,
+        status_forcelist=(429, 500, 502, 503, 504),
         allowed_methods=["GET"],
         raise_on_status=False,
     )
