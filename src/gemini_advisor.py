@@ -12,7 +12,8 @@ def generate_persona_advisory(
     api_key: Optional[str] = None,
 ) -> str:
     """Generates tailored health & operational guidance using Gemini or rule-based engine."""
-    resolved_key = api_key or os.getenv("GEMINI_API_KEY", "")
+    resolved_key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
+    fallback_reason = "No API key provided"
 
     if resolved_key:
         try:
@@ -29,16 +30,26 @@ def generate_persona_advisory(
                 f"Provide a crisp, actionable 3-bullet advisory tailored strictly to a '{persona}'. "
                 f"Include specific timing, protective gear/filtration, and exposure thresholds. Keep under 120 words."
             )
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-            )
-            if response and response.text:
-                return response.text.strip()
-        except Exception:  # pylint: disable=broad-except
-            pass
 
-    # Deterministic structured fallback when no API key is configured
+            last_err = ""
+            for model_name in ("gemini-2.5-flash", "gemini-2.0-flash"):
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=prompt,
+                    )
+                    if response and response.text:
+                        return f"{response.text.strip()}\n\n*✨ Engine: Live Google Gemini ({model_name})*"
+                except Exception as model_err:  # pylint: disable=broad-except
+                    last_err = str(model_err)
+
+            fallback_reason = last_err[:120] if last_err else "Empty response from Gemini"
+        except ImportError:
+            fallback_reason = "google-genai package not installed in requirements.txt"
+        except Exception as err:  # pylint: disable=broad-except
+            fallback_reason = str(err)[:120]
+
+    # Deterministic structured fallback when no API key is configured or API call fails
     aqi_val = aqi_report["aqi"]
     dom = aqi_report["dominant_pollutant"]
     persona_tips = {
@@ -63,4 +74,5 @@ def generate_persona_advisory(
             f"- **Public Alerting:** Issue ward-level advisory notices if AQI trends above 200."
         ),
     }
-    return persona_tips.get(persona, persona_tips["General Citizen"])
+    base_tip = persona_tips.get(persona, persona_tips["General Citizen"])
+    return f"{base_tip}\n\n*⚙️ Engine: Deterministic Rule Engine ({fallback_reason})*"
