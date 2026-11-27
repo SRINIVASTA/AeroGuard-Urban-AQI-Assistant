@@ -142,7 +142,8 @@ with st.sidebar:
         type="password",
         help="Optional: Leave blank to use the built-in deterministic advisory engine.",
     )
-st.divider()
+
+    st.divider()
     if st.button("🔄 Refresh Live Telemetry", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
