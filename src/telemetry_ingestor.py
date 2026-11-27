@@ -20,8 +20,8 @@ def _create_resilient_session() -> requests.Session:
         total=3,
         connect=3,
         read=3,
-        backoff_factor=1.0,  # Waits 1s, 2s, 4s between retries
-        status_forcelist=[429, 500, 502, 503, 504],
+        backoff_factor=1.0,
+        status_forcelist=(429, 500, 502, 503, 504),
         allowed_methods=["GET", "POST"],
         raise_on_status=False,
     )
@@ -87,7 +87,6 @@ def _compute_osm_micro_factors(elements: list, wind_kmh: float) -> Dict[str, Any
         if tags.get("natural") in ("beach", "coastline", "wood", "water") or tags.get("leisure") == "park":
             green_coast_count += 1
 
-    # High wind dilutes localized micro-plumes; stagnant wind traps them
     stagnation_factor = 1.25 if wind_kmh < 8.0 else (0.75 if wind_kmh > 18.0 else 1.0)
 
     ind_boost = min(0.24, ind_count * 0.04) * stagnation_factor
@@ -113,7 +112,6 @@ def fetch_air_telemetry(lat: float, lon: float) -> Dict[str, Any]:
     """Fetches live global pollutants concurrently with retry resilience & OSM micro-downscaling."""
     aq_url = "".join(("https://", "air-quality-api.", "open-meteo.", "com/v1/air-quality"))
 
-    # Sample target point + 4 neighboring CAMS cells (±0.06 deg) for smooth spatial gradient
     offsets = [(0.0, 0.0, 0.50), (0.06, 0.0, 0.125), (-0.06, 0.0, 0.125), (0.0, 0.06, 0.125), (0.0, -0.06, 0.125)]
     lats = ",".join(f"{round(lat + dlat, 4)}" for dlat, _, _ in offsets)
     lons = ",".join(f"{round(lon + dlon, 4)}" for _, dlon, _ in offsets)
@@ -135,7 +133,6 @@ def fetch_air_telemetry(lat: float, lon: float) -> Dict[str, Any]:
         "timezone": "auto",
     }
 
-    # Execute Air Quality, Weather, and Overpass OSM calls in parallel
     with ThreadPoolExecutor(max_workers=3) as executor:
         aq_future = executor.submit(_safe_get_json, aq_url, aq_params)
         wx_future = executor.submit(_safe_get_json, wx_url, wx_params)
@@ -145,13 +142,11 @@ def fetch_air_telemetry(lat: float, lon: float) -> Dict[str, Any]:
         wx_data = wx_future.result()
         osm_elements = osm_future.result()
 
-    # Open-Meteo returns a list when multiple coordinates are queried
     aq_list = aq_raw if isinstance(aq_raw, list) else [aq_raw]
-    primary_aq = aq_list[0]
+    primary_aq = aq_list
     current_wx = wx_data.get("current", {})
     wind_kmh = float(current_wx.get("wind_speed_10m") or 0.0)
 
-    # Bilinear spatial blend across CAMS grid cells
     keys_map = {
         "pm2_5": "pm2_5",
         "pm10": "pm10",
@@ -164,7 +159,7 @@ def fetch_air_telemetry(lat: float, lon: float) -> Dict[str, Any]:
     total_w = 0.0
 
     for idx, item in enumerate(aq_list):
-        w = offsets[idx][2] if idx < len(offsets) else 0.1
+        w = offsets[idx] if idx < len(offsets) else 0.1
         cur = item.get("current", {})
         for out_k, api_k in keys_map.items():
             pollutants[out_k] += float(cur.get(api_k) or 0.0) * w
@@ -174,7 +169,6 @@ def fetch_air_telemetry(lat: float, lon: float) -> Dict[str, Any]:
         for k in pollutants:
             pollutants[k] = round(pollutants[k] / total_w, 1)
 
-    # Apply keyless OpenStreetMap local land-use downscaling (1.5 km micro-environment)
     micro = _compute_osm_micro_factors(osm_elements, wind_kmh)
     pollutants["pm2_5"] = round(pollutants["pm2_5"] * micro["pm_mult"], 1)
     pollutants["pm10"] = round(pollutants["pm10"] * micro["pm_mult"], 1)
