@@ -25,6 +25,44 @@ st.set_page_config(
 )
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def _cached_resolve_location(query: str) -> dict:
+    """Caches city-to-coordinate lookups for 1 hour."""
+    return resolve_location(query.strip())
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _cached_resolve_coordinates(lat: float, lon: float) -> dict:
+    """Caches reverse-geocoded place names for 1 hour."""
+    return resolve_coordinates(round(lat, 5), round(lon, 5))
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def _cached_fetch_telemetry(lat: float, lon: float) -> dict:
+    """Caches Copernicus CAMS + OSM telemetry for 10 minutes per coordinate."""
+    return fetch_air_telemetry(round(lat, 4), round(lon, 4))
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def _cached_build_pdf(
+    location: dict,
+    telemetry: dict,
+    aqi_report: dict,
+    dispersion: dict,
+    advisory_text: str,
+    persona: str,
+) -> bytes:
+    """Caches Esri tile-stitched PDF certificate bytes across UI reruns."""
+    return build_aqi_certificate(
+        location=location,
+        telemetry=telemetry,
+        aqi_report=aqi_report,
+        dispersion=dispersion,
+        advisory_text=advisory_text,
+        persona=persona,
+    )
+
+
 def _get_secret_safe(section: str, key: str) -> str:
     """Safely reads Streamlit secrets without crashing when secrets.toml is absent."""
     try:
@@ -104,17 +142,18 @@ with st.sidebar:
         type="password",
         help="Optional: Leave blank to use the built-in deterministic advisory engine.",
     )
+
 try:
     with st.spinner("Resolving live coordinates and ingesting real-time satellite telemetry..."):
         if st.session_state["clicked_coords"] is not None:
             sel_lat, sel_lon = st.session_state["clicked_coords"]
-            location = resolve_coordinates(sel_lat, sel_lon)
+            location = _cached_resolve_coordinates(sel_lat, sel_lon)
         elif search_mode == "Type City / Place Name":
-            location = resolve_location(city_input)
+            location = _cached_resolve_location(city_input)
         else:
-            location = resolve_coordinates(lat_input, lon_input)
+            location = _cached_resolve_coordinates(lat_input, lon_input)
 
-        telemetry = fetch_air_telemetry(location["lat"], location["lon"])
+        telemetry = _cached_fetch_telemetry(location["lat"], location["lon"])
         aqi_report = compute_cpcb_aqi(telemetry["pollutants"])
         dispersion = analyze_dispersion(telemetry["meteorology"])
 
@@ -219,7 +258,7 @@ try:
         st.success(advisory_text)
 
         st.subheader("📄 Export & Dispatch Official Certificate")
-        pdf_bytes = build_aqi_certificate(
+        pdf_bytes = _cached_build_pdf(
             location=location,
             telemetry=telemetry,
             aqi_report=aqi_report,
