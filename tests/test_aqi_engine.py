@@ -103,3 +103,30 @@ def test_pdf_international_country_timezone():
     pdf_bytes = build_aqi_certificate(loc, telemetry, aqi_report, dispersion, advisory, "General Citizen")
     assert pdf_bytes.startswith(b"%PDF")
     assert b"JST" in _extract_pdf_text_bytes(pdf_bytes)
+
+
+def test_deterministic_engine_badge_and_pdf_sanitization():
+    loc = {
+        "name": "Bavulavada, Andhra Pradesh, India",
+        "lat": 17.73757,
+        "lon": 82.97575,
+        "zone": "OSM Reverse Telemetry Grid",
+        "is_land": True,
+    }
+    telemetry = {
+        "timezone": "Asia/Kolkata",
+        "timezone_abbr": "IST",
+        "pollutants": {"pm2_5": 46.4, "pm10": 48.2, "no2": 14.0, "so2": 43.6, "o3": 127.0, "co": 465.0},
+        "meteorology": {"temp_c": 30.0, "humidity_pct": 65.0, "wind_speed_kmh": 11.5, "wind_dir_deg": 140.0, "boundary_layer_m": 1215.0},
+    }
+    aqi_report = compute_cpcb_aqi(telemetry["pollutants"])
+    dispersion = analyze_dispersion(telemetry["meteorology"])
+
+    advisory = generate_persona_advisory(loc["name"], aqi_report, dispersion, persona="General Citizen", api_key="")
+    assert "Deterministic Rule Engine" in advisory
+
+    mock_gemini_adv = "Ozone ($O_3$) peaks at noon.\n\n*✨ Engine: Live Google Gemini (gemini-3.5-flash-lite)*"
+    pdf_bytes = build_aqi_certificate(loc, telemetry, aqi_report, dispersion, mock_gemini_adv, "General Citizen")
+    extracted = _extract_pdf_text_bytes(pdf_bytes)
+    assert b"Live Google Gemini" in extracted
+    assert b"$O_3$" not in extracted
