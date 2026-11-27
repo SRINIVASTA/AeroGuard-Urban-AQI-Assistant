@@ -142,7 +142,10 @@ with st.sidebar:
         type="password",
         help="Optional: Leave blank to use the built-in deterministic advisory engine.",
     )
-
+st.divider()
+    if st.button("🔄 Refresh Live Telemetry", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
 try:
     with st.spinner("Resolving live coordinates and ingesting real-time satellite telemetry..."):
         if st.session_state["clicked_coords"] is not None:
